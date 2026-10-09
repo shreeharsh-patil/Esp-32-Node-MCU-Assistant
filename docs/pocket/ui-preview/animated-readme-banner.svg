@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 435" width="1080" height="435" role="img" aria-labelledby="title desc">
+<title id="title">Shreeharsh Assistant — animated project artwork</title>
+<desc id="desc">A black and midnight-purple banner with Shreeharsh Assistant lettering and an illustrated horizontal ESP32 assistant face, blinking eyes, glowing pink cheeks and an animated sound-wave mouth. Concept artwork, not a physical-device photograph.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08080d"/><stop offset=".55" stop-color="#121021"/><stop offset="1" stop-color="#070913"/></linearGradient>
+<radialGradient id="aura"><stop stop-color="#e79bb9" stop-opacity=".22"/><stop offset="1" stop-color="#e79bb9" stop-opacity="0"/></radialGradient>
+<linearGradient id="frame" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#42404f"/><stop offset=".45" stop-color="#242635"/><stop offset="1" stop-color="#11121e"/></linearGradient>
+<linearGradient id="eye" x1="0" y1="0" x2=".3" y2="1"><stop stop-color="#fffefb"/><stop offset="1" stop-color="#eddcea"/></linearGradient>
+<radialGradient id="cheek"><stop stop-color="#ffa9ca" stop-opacity=".75"/><stop offset=".6" stop-color="#e98ab2" stop-opacity=".25"/><stop offset="1" stop-color="#e98ab2" stop-opacity="0"/></radialGradient>
+<filter id="blur"><feGaussianBlur stdDeviation="13"/></filter>
+</defs>
+<rect width="1080" height="435" rx="23" fill="url(#bg)"/>
+<circle cx="821" cy="224" r="265" fill="url(#aura)"/>
+<circle cx="949" cy="92" r="5" fill="#ffb0c9" opacity=".75"><animate attributeName="opacity" values=".2;.9;.2" dur="3.5s" repeatCount="indefinite"/></circle>
+<circle cx="581" cy="358" r="3" fill="#d4bcff" opacity=".7"><animate attributeName="opacity" values=".75;.25;.75" dur="4s" repeatCount="indefinite"/></circle>
+<g font-family="Arial,Helvetica,sans-serif">
+<rect x="62" y="54" width="160" height="29" rx="14.5" fill="#352337" stroke="#8b546e" stroke-opacity=".65"/>
+<circle cx="78" cy="68.5" r="4.5" fill="#ffb6d2"><animate attributeName="opacity" values="1;.32;1" dur="2.3s" repeatCount="indefinite"/></circle>
+<text x="92" y="73.5" font-size="12" fill="#ffd5e5" letter-spacing="1.6" font-weight="700">OPEN SOURCE AI</text>
+<text x="55" y="167" font-size="62" font-weight="800" letter-spacing="-1.6" fill="#fff6fb">SHREEHARSH</text>
+<text x="58" y="225" font-size="62" font-weight="800" letter-spacing="-1.6" fill="#f1bdd4">ASSISTANT</text>
+<text x="61" y="270" font-size="20" fill="#c4b5c8">An expressive, voice-powered ESP32 companion.</text>
+<line x1="62" y1="295" x2="556" y2="295" stroke="#514257" stroke-width="1"/>
+<g font-size="13" letter-spacing=".7" fill="#f3d5e5">
+<rect x="61" y="318" width="117" height="36" rx="18" fill="#342437" stroke="#6c455e" stroke-opacity=".7"/><text x="81" y="340">GEMINI LIVE</text>
+<rect x="190" y="318" width="118" height="36" rx="18" fill="#342437" stroke="#6c455e" stroke-opacity=".7"/><text x="208" y="340">280 × 240 UI</text>
+<rect x="320" y="318" width="117" height="36" rx="18" fill="#342437" stroke="#6c455e" stroke-opacity=".7"/><text x="338" y="340">ESP32 + I2S</text>
+</g>
+<text x="63" y="392" font-size="13" fill="#a699b2" letter-spacing="1.2">VOICE  •  PERSONALITY  •  PRIVACY-FIRST KEYS</text>
+</g>
+<g>
+<rect x="616" y="86" width="421" height="279" rx="40" fill="#d89fba" opacity=".1" filter="url(#blur)"/>
+<rect x="610" y="72" width="423" height="280" rx="42" fill="url(#frame)" stroke="#767083" stroke-width="2"/>
+<rect x="625" y="89" width="393" height="244" rx="25" fill="#020204" stroke="#302934" stroke-width="2"/>
+<g>
+<ellipse cx="709" cy="238" rx="47" ry="31" fill="url(#cheek)"><animate attributeName="opacity" values=".7;1;.7" dur="3.2s" repeatCount="indefinite"/></ellipse>
+<ellipse cx="934" cy="238" rx="47" ry="31" fill="url(#cheek)"><animate attributeName="opacity" values="1;.7;1" dur="3.2s" repeatCount="indefinite"/></ellipse>
+<rect x="720" y="151" width="32" height="70" rx="16" fill="url(#eye)">
+<animate attributeName="height" values="70;70;6;70;70" keyTimes="0;.47;.50;.53;1" dur="5s" repeatCount="indefinite"/>
+<animate attributeName="y" values="151;151;184;151;151" keyTimes="0;.47;.50;.53;1" dur="5s" repeatCount="indefinite"/>
+</rect>
+<rect x="891" y="151" width="32" height="70" rx="16" fill="url(#eye)">
+<animate attributeName="height" values="70;70;6;70;70" keyTimes="0;.47;.50;.53;1" dur="5s" repeatCount="indefinite"/>
+<animate attributeName="y" values="151;151;184;151;151" keyTimes="0;.47;.50;.53;1" dur="5s" repeatCount="indefinite"/>
+</rect>
+<g fill="#ffccdf">
+<rect x="791" y="244" width="8" height="12" rx="4"><animate attributeName="height" values="12;25;9;12" dur="1.15s" repeatCount="indefinite"/><animate attributeName="y" values="244;238;246;244" dur="1.15s" repeatCount="indefinite"/></rect>
+<rect x="808" y="240" width="8" height="20" rx="4"><animate attributeName="height" values="20;10;29;20" dur="1.4s" repeatCount="indefinite"/><animate attributeName="y" values="240;245;235;240" dur="1.4s" repeatCount="indefinite"/></rect>
+<rect x="825" y="236" width="8" height="28" rx="4"><animate attributeName="height" values="28;15;8;28" dur="1.26s" repeatCount="indefinite"/><animate attributeName="y" values="236;242;246;236" dur="1.26s" repeatCount="indefinite"/></rect>
+<rect x="842" y="240" width="8" height="20" rx="4"><animate attributeName="height" values="20;31;11;20" dur="1.6s" repeatCount="indefinite"/><animate attributeName="y" values="240;234;244;240" dur="1.6s" repeatCount="indefinite"/></rect>
+</g>
+</g>
+<rect x="765" y="338" width="118" height="7" rx="3.5" fill="#69616c" opacity=".55"/>
+<circle cx="650" cy="345" r="4" fill="#d6a7c6" opacity=".7"/>
+</g>
+<text x="1040" y="415" text-anchor="end" font-size="11" font-family="Arial,Helvetica,sans-serif" fill="#9f91a9">Animated concept · live UI examples below</text>
+</svg>
