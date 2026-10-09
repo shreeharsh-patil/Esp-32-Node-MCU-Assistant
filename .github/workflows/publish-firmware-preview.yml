@@ -1,0 +1,113 @@
+name: Publish NodeMCU firmware preview
+on:
+  push:
+    branches: [main]
+    paths: [.github/firmware-preview.request]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nodemcu-firmware-preview
+  cancel-in-progress: false
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v6.1
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run tests and build conversation
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "$IDF_PATH/export.sh"
+          python -X utf8 scripts/pocket_host_tests.py
+          python scripts/build.py custom-esp32-nodemcu-pocket-ai --name custom-esp32-nodemcu-pocket-ai --language en-US --wake-word disabled
+          python scripts/pocket_snapshot.py conversation
+      - name: Build diagnostics firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "$IDF_PATH/export.sh"
+          python scripts/build.py custom-esp32-nodemcu-pocket-ai --name custom-esp32-nodemcu-pocket-ai-diagnostics --language en-US --wake-word disabled
+          python scripts/pocket_snapshot.py diagnostics
+      - name: Verify and package firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd pocket-release
+          sha256sum pocket-xiaozhi-esp32.bin pocket-xiaozhi-esp32-diagnostics.bin conversation/bootloader.bin conversation/partition-table.bin conversation/xiaozhi.bin diagnostics/bootloader.bin diagnostics/partition-table.bin diagnostics/xiaozhi.bin > SHA256SUMS.txt
+          cd ..
+          python scripts/pocket_flash.py --verify-only
+          python scripts/pocket_flash.py --verify-only --diagnostics
+          mkdir -p release-assets
+          cp pocket-release/pocket-xiaozhi-esp32.bin release-assets/shreeharsh-nodemcu-conversation.bin
+          cp pocket-release/pocket-xiaozhi-esp32-diagnostics.bin release-assets/shreeharsh-nodemcu-diagnostics.bin
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          root=Path("pocket-release")
+          names=["pocket-xiaozhi-esp32.bin","pocket-xiaozhi-esp32-diagnostics.bin","SHA256SUMS.txt"]
+          names += [f"{variant}/{filename}" for variant in ("conversation","diagnostics") for filename in ("bootloader.bin","partition-table.bin","xiaozhi.bin","flasher_args.json","image-report.json")]
+          with ZipFile("release-assets/shreeharsh-nodemcu-firmware.zip","w",ZIP_DEFLATED) as z:
+              for name in names:
+                  path=root/name
+                  if not path.is_file(): raise SystemExit(f"Missing firmware file: {path}")
+                  z.write(path,path.as_posix())
+          with ZipFile("release-assets/shreeharsh-nodemcu-firmware.zip") as z:
+              if z.testzip() is not None: raise SystemExit("Corrupt firmware ZIP")
+          PY
+          cd release-assets
+          sha256sum *.bin *.zip > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: validated-nodemcu-firmware
+          path: release-assets/
+          if-no-files-found: error
+
+  publish:
+    needs: firmware
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: validated-nodemcu-firmware
+          path: release-assets
+      - name: Verify assets
+        run: cd release-assets && sha256sum -c SHA256SUMS.txt
+      - name: Prepare release notes
+        run: |
+          cat > release-notes.md <<'NOTES'
+          # ESP32 NodeMCU — experimental preview
+          **Not fully hardware-validated.** Only for classic ESP32 NodeMCU/WROOM-32 with 4MB flash, not ESP32-S3.
+
+          Assets: conversation merged image; offline diagnostics merged image; ZIP with both images and individual bootloader/partition/application files; SHA256 checksums.
+
+          **Known hardware issue:** previous speaker tone/replay tests were inaudible; physical audio is NOT yet confirmed. Current face has been observed on a device, but detailed UI and long-term tests remain incomplete. Production Vercel deployment, real Gemini Live end-to-end conversation and network recovery remain unverified.
+
+          The firmware uses your own Vercel backend and private Gemini credentials; no credentials are included. OTA is disabled: firmware updates require USB.
+
+          Merged images are written at flash offset 0x0 and may overwrite saved settings. For routine credential-preserving updates use scripts/pocket_flash.py with the ZIP's individual images. Check hardware connections, power rail and the amplifier enable pin before testing.
+
+          For setup and tests, see the repository README, docs/pocket/HARDWARE_TESTS.md and backend/README.md.
+          NOTES
+      - name: Publish pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=v0.1.0-preview.1
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber
+            gh release edit "$TAG" --title "ESP32 NodeMCU Firmware v0.1.0 Preview 1" --prerelease --notes-file release-notes.md
+          else
+            gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --prerelease --title "ESP32 NodeMCU Firmware v0.1.0 Preview 1" --notes-file release-notes.md
+          fi
+          gh release view "$TAG" --json url,isPrerelease,assets
