@@ -1,0 +1,34 @@
+{
+  "file": "pocket-esp-ai.bin",
+  "bytes": 3541630,
+  "sha256": "3d9dc6d68cc0eebaacb05f20fb4cc49fda7802eda21400483f1d9fcf2a01cf98",
+  "type": "combined",
+  "images": [
+    {
+      "offset": "0x0",
+      "chip_id": 5,
+      "chip": "ESP32-C3",
+      "segments": 3,
+      "image_bytes": 14832,
+      "checksum_valid": true,
+      "hash_valid": true,
+      "kind": "bootloader_or_other"
+    },
+    {
+      "offset": "0x10000",
+      "chip_id": 5,
+      "chip": "ESP32-C3",
+      "segments": 6,
+      "image_bytes": 2244336,
+      "checksum_valid": true,
+      "hash_valid": true,
+      "kind": "app",
+      "version": "2.4.0",
+      "project": "xiaozhi",
+      "build_time": "17:23:10",
+      "build_date": "Aug 26 2026",
+      "idf": "v5.5.2-dirty"
+    }
+  ],
+  "compatible_with_esp32_wroom32": false
+}

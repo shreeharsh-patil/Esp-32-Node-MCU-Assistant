@@ -11,3 +11,6 @@ idf_build_set_property(MINIMAL_BUILD ON)
 
 set(PROJECT_VER "2.5.1")
 project(xiaozhi)
+
+# Keep managed components unchanged while supporting workspace paths with spaces.
+include(cmake/pocket_codec_paths.cmake)

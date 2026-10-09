@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-09",
+  "board": "custom-esp32-nodemcu-pocket-ai",
+  "default": "hands-free on, server speech detection, capture paused during replies",
+  "host_tests": {
+    "passed": 105,
+    "failed": 0,
+    "skipped": 0
+  },
+  "native_policy": "PASS: disabled/busy/listening guards, retry bounds, restart and large timestamps",
+  "backend_input_validation": "PASS: HTTPS origin and device token native boundary tests",
+  "portal_javascript_syntax": "PASS: node --check",
+  "firmware_builds": {
+    "conversation": {
+      "result": "PASS",
+      "merged_bytes": 2234032,
+      "custom_backend": true
+    },
+    "diagnostics": {
+      "result": "PASS",
+      "merged_bytes": 2218896,
+      "custom_backend": false
+    }
+  },
+  "historical_device_evidence": {
+    "scope": "Previous official-service firmware, manually started by USB",
+    "wifi": "DHCP ready; user confirmed Connected and IP",
+    "transport": "Official WebSocket handshake and hello accepted",
+    "capture_frames": 125280,
+    "rx_tx_errors": 0,
+    "speech_and_audible_reply": "NOT established"
+  },
+  "current_custom_image_installed": true,
+  "physical_hands_free_speech": "PENDING: production backend deployment/configuration and acoustic testing required; USB update completed",
+  "speaker_retest": "FAIL: current installed image, six tones at volume20/50 and two speech replays all silent to user; volume restored20",
+  "multi_turn_and_recovery": "PENDING physical test",
+  "context": "Per Live session; resets on renewal/disconnect; persistent memory not implemented",
+  "application_heartbeat": "PASS locally: 20-second JSON ping renews protocol data timestamp without UI or state changes",
+  "representative_regression": "PASS: bread-compact-esp32-lcd default network/features compiled",
+  "face_revision": "2026-10-09 audio-reactive face installed; startup and new face user-confirmed; actual speech/mouth alignment pending",
+  "local_audio_capture": "PARTIAL: signal present and Opus output transfers pass; DMA overruns and speech intelligibility require follow-up"
+}

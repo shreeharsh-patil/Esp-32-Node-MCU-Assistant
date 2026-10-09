@@ -1,0 +1,25 @@
+{
+  "name": "shreeharsh-assistant-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dev.js",
+    "build": "node scripts/check-syntax.js",
+    "test": "node --test tests/*.test.js",
+    "check-deployment": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/check-deployment.js"
+  },
+  "dependencies": {
+    "@google/genai": "2.28.0",
+    "@neondatabase/serverless": "1.2.0",
+    "express": "5.2.1",
+    "opusscript": "0.1.1",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "pg-mem": "3.0.14"
+  }
+}

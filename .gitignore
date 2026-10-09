@@ -18,3 +18,10 @@ main/mmap_generate_emoji.h
 *.bin
 mmap_generate_*.h
 .clangd
+pocket-release/
+pocket-*.log
+pocket-ui-sim-build/
+backend/node_modules/
+backend/.vercel/
+backend/.env*
+!backend/.env.example

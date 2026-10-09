@@ -42,7 +42,7 @@
 #define MAX_PLAYBACK_TASKS_IN_QUEUE 2
 #define MAX_DECODE_PACKETS_IN_QUEUE (1200 / OPUS_FRAME_DURATION_MS)
 #define MAX_SEND_PACKETS_IN_QUEUE (2400 / OPUS_FRAME_DURATION_MS)
-#define AUDIO_TESTING_MAX_DURATION_MS 10000
+#define AUDIO_TESTING_MAX_DURATION_MS CONFIG_AUDIO_TEST_DURATION_MS
 #define MAX_TIMESTAMPS_IN_QUEUE 3
 
 #define AUDIO_POWER_TIMEOUT_MS 15000
@@ -147,6 +147,7 @@ public:
     bool ReadAudioData(std::vector<int16_t>& data, int sample_rate, int samples);
     void ResetDecoder();
     void SetModelsList(srmodel_list_t* models_list);
+    void PrintDiagnostics();
 
 private:
     AudioCodec* codec_ = nullptr;

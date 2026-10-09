@@ -6,6 +6,47 @@ config OTA_URL
     help
         The application will access this URL to check for new firmwares and server address.
 
+config ALLOW_FIRMWARE_UPDATES
+    bool "Allow firmware image updates"
+    default y
+    help
+        Disable on single-app custom flash layouts. Endpoint discovery and
+        official device activation remain enabled.
+
+config PREFER_WEBSOCKET
+    bool "Prefer WebSocket when discovery supplies both transports"
+    default n
+    help
+        Uses only the endpoint and credentials returned by official discovery.
+        MQTT/UDP remains available when no WebSocket configuration is supplied.
+
+config AUDIO_TEST_DURATION_MS
+    int "Maximum local audio test duration (milliseconds)"
+    range 1000 10000
+    default 10000
+    help
+        Bounds local compressed loopback history. Reduce on boards without PSRAM.
+
+config ENABLE_DYNAMIC_GLYPH_PUSH
+    bool "Accept dynamic text glyphs from the server"
+    default y
+    help
+        Disable on small-RAM boards to avoid the dynamic glyph cache allocation.
+
+config POCKET_HARDWARE_DIAGNOSTICS
+    bool "Pocket hardware diagnostics without Wi-Fi or cloud"
+    depends on BOARD_TYPE_CUSTOM_ESP32_NODEMCU_POCKET_AI
+    default n
+
+config POCKET_CUSTOM_BACKEND
+    bool "Use a privately configured Pocket voice backend"
+    depends on BOARD_TYPE_CUSTOM_ESP32_NODEMCU_POCKET_AI && !POCKET_HARDWARE_DIAGNOSTICS
+    default y
+    help
+        Requires an HTTPS backend origin and device token in the local setup
+        portal. Provider API keys remain on the server. Official discovery
+        and hosted voice endpoints are not used in this mode.
+
 choice
     prompt "Flash Assets"
     default FLASH_DEFAULT_ASSETS if !USE_EMOTE_MESSAGE_STYLE
@@ -179,6 +220,9 @@ choice BOARD_TYPE
     config BOARD_TYPE_BREAD_COMPACT_WIFI_CAM
         bool "Bread Compact Wi-Fi + LCD + Camera (面包板)"
         depends on IDF_TARGET_ESP32S3
+    config BOARD_TYPE_CUSTOM_ESP32_NODEMCU_POCKET_AI
+        bool "Custom ESP32 NodeMCU Pocket AI (ST7789 / INMP441 / MAX98357A)"
+        depends on IDF_TARGET_ESP32
     config BOARD_TYPE_DF_S3_AI_CAM
         bool "DFRobot ESP32-S3 AI Camera Module"
         depends on IDF_TARGET_ESP32S3

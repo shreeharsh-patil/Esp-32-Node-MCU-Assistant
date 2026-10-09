@@ -860,6 +860,24 @@ void AudioService::SetModelsList(srmodel_list_t* models_list) {
     models_list_ = models_list;
 }
 
+void AudioService::PrintDiagnostics() {
+    std::lock_guard<std::mutex> lock(audio_queue_mutex_);
+    ESP_LOGI(TAG, "QUEUES encode=%u/%u send=%u/%u decode=%u/%u playback=%u/%u test=%u/%u",
+             static_cast<unsigned>(audio_encode_queue_.size()), MAX_ENCODE_TASKS_IN_QUEUE,
+             static_cast<unsigned>(audio_send_queue_.size()), MAX_SEND_PACKETS_IN_QUEUE,
+             static_cast<unsigned>(audio_decode_queue_.size()), MAX_DECODE_PACKETS_IN_QUEUE,
+             static_cast<unsigned>(audio_playback_queue_.size()), MAX_PLAYBACK_TASKS_IN_QUEUE,
+             static_cast<unsigned>(audio_testing_queue_.size()),
+             static_cast<unsigned>(kAudioTestingPacketCapacity));
+#if INCLUDE_xTaskGetHandle
+    for (const char* name : {"audio_input", "audio_output", "opus_codec", "pocket_control"}) {
+        if (auto task = xTaskGetHandle(name))
+            ESP_LOGI(TAG, "STACK %s minimum_remaining=%u bytes", name,
+                     static_cast<unsigned>(uxTaskGetStackHighWaterMark(task)));
+    }
+#endif
+}
+
 bool AudioService::IsAfeWakeWord() {
     return audio_engine_initialized_ && audio_engine_->IsAfeWakeWord();
 }

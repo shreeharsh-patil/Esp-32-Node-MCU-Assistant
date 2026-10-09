@@ -3,6 +3,7 @@
 #include "board.h"
 #include "settings.h"
 #include "system_info.h"
+#include "websocket_audio_frame.h"
 
 #include <esp_log.h>
 #include <arpa/inet.h>
@@ -80,12 +81,31 @@ bool WebsocketProtocol::OpenAudioChannel() {
     Settings settings("websocket", false);
     std::string url = settings.GetString("url");
     std::string token = settings.GetString("token");
+    auto& board = Board::GetInstance();
+    if (board.UsesCustomBackend()) {
+        url = board.GetCustomBackendUrl();
+        token = board.GetCustomBackendToken();
+        if (url.rfind("https://", 0) != 0 || token.empty()) {
+            SetError(Lang::Strings::SERVER_NOT_CONNECTED);
+            return false;
+        }
+        url.replace(0, 5, "wss");
+        url += "/ws";
+    }
     int version = settings.GetInt("version");
     if (version != 0) {
         version_ = version;
     }
+    if (board.UsesCustomBackend())
+        version_ = 1;
+    if (version_ < 1 || version_ > 3) {
+        SetError(Lang::Strings::SERVER_ERROR);
+        return false;
+    }
 
     error_occurred_ = false;
+    session_id_.clear();
+    xEventGroupClearBits(event_group_handle_, WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT);
 
     auto network = Board::GetInstance().GetNetwork();
     websocket_ = network->CreateWebSocket(1);
@@ -108,43 +128,32 @@ bool WebsocketProtocol::OpenAudioChannel() {
     websocket_->OnData([this](const char* data, size_t len, bool binary) {
         if (binary) {
             if (on_incoming_audio_ != nullptr) {
-                if (version_ == 2) {
-                    BinaryProtocol2* bp2 = (BinaryProtocol2*)data;
-                    bp2->version = ntohs(bp2->version);
-                    bp2->type = ntohs(bp2->type);
-                    bp2->timestamp = ntohl(bp2->timestamp);
-                    bp2->payload_size = ntohl(bp2->payload_size);
-                    auto payload = (uint8_t*)bp2->payload;
-                    on_incoming_audio_(std::make_unique<AudioStreamPacket>(AudioStreamPacket{
-                        .sample_rate = server_sample_rate_,
-                        .frame_duration = server_frame_duration_,
-                        .timestamp = bp2->timestamp,
-                        .payload = std::vector<uint8_t>(payload, payload + bp2->payload_size)}));
-                } else if (version_ == 3) {
-                    BinaryProtocol3* bp3 = (BinaryProtocol3*)data;
-                    bp3->type = bp3->type;
-                    bp3->payload_size = ntohs(bp3->payload_size);
-                    auto payload = (uint8_t*)bp3->payload;
-                    on_incoming_audio_(std::make_unique<AudioStreamPacket>(AudioStreamPacket{
-                        .sample_rate = server_sample_rate_,
-                        .frame_duration = server_frame_duration_,
-                        .timestamp = 0,
-                        .payload = std::vector<uint8_t>(payload, payload + bp3->payload_size)}));
-                } else {
-                    on_incoming_audio_(std::make_unique<AudioStreamPacket>(AudioStreamPacket{
-                        .sample_rate = server_sample_rate_,
-                        .frame_duration = server_frame_duration_,
-                        .timestamp = 0,
-                        .payload = std::vector<uint8_t>((uint8_t*)data, (uint8_t*)data + len)}));
+                xiaozhi::WebsocketAudioFrame frame;
+                if (!xiaozhi::ParseWebsocketAudio(reinterpret_cast<const uint8_t*>(data), len,
+                                                  version_, frame)) {
+                    ESP_LOGW(TAG, "Rejected malformed or oversized WebSocket audio frame");
+                    return;
                 }
+                on_incoming_audio_(std::make_unique<AudioStreamPacket>(AudioStreamPacket{
+                    .sample_rate = server_sample_rate_,
+                    .frame_duration = server_frame_duration_,
+                    .timestamp = frame.timestamp,
+                    .payload = std::vector<uint8_t>(frame.payload, frame.payload + frame.size)}));
             }
         } else {
+            if (len > 16384) {
+                ESP_LOGW(TAG, "Rejected oversized WebSocket JSON message");
+                return;
+            }
             // Parse JSON data
             auto root = cJSON_ParseWithLength(data, len);
             auto type = cJSON_GetObjectItem(root, "type");
             if (cJSON_IsString(type)) {
                 if (strcmp(type->valuestring, "hello") == 0) {
                     ParseServerHello(root);
+                } else if (Board::GetInstance().UsesCustomBackend() &&
+                           strcmp(type->valuestring, "ping") == 0) {
+                    // Refresh last_incoming_time_ below without changing UI/state.
                 } else {
                     if (on_incoming_json_ != nullptr) {
                         on_incoming_json_(root);
@@ -235,6 +244,8 @@ void WebsocketProtocol::ParseServerHello(const cJSON* root) {
 
     auto session_id = cJSON_GetObjectItem(root, "session_id");
     if (cJSON_IsString(session_id)) {
+        if (strlen(session_id->valuestring) > 128)
+            return;
         session_id_ = session_id->valuestring;
         ESP_LOGI(TAG, "Session ID: %s", session_id_.c_str());
     }
@@ -249,6 +260,11 @@ void WebsocketProtocol::ParseServerHello(const cJSON* root) {
         if (cJSON_IsNumber(frame_duration)) {
             server_frame_duration_ = frame_duration->valueint;
         }
+    }
+
+    if (!xiaozhi::IsSupportedAudioParameters(server_sample_rate_, server_frame_duration_)) {
+        ESP_LOGE(TAG, "Unsupported negotiated Opus sample rate or frame duration");
+        return;
     }
 
     xEventGroupSetBits(event_group_handle_, WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT);

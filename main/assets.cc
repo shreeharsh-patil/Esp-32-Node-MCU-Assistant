@@ -66,7 +66,7 @@ void Assets::UnApplyPartition() {
 }
 
 void Assets::UseBuiltInTextFontCapability() {
-#if HAVE_LVGL
+#if HAVE_LVGL && CONFIG_ENABLE_DYNAMIC_GLYPH_PUSH
     text_font_capability_ = {
         .glyph_push = true,
         .bundle = NOTO_FONT_BUNDLE_ID,

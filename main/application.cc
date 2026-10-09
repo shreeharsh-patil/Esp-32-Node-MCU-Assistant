@@ -16,6 +16,7 @@
 #include <esp_log.h>
 #include <arpa/inet.h>
 #include <cJSON.h>
+#include <algorithm>
 #include <cstring>
 #include <limits>
 
@@ -440,11 +441,12 @@ void Application::CheckAssetsVersion() {
 }
 
 void Application::CheckNewVersion() {
-    const int MAX_RETRY = 10;
-    int retry_count = 0;
-    int retry_delay = 10;  // Initial retry delay in seconds
-
     auto& board = Board::GetInstance();
+    const bool custom_backend = board.UsesCustomBackend();
+    const int MAX_RETRY = custom_backend ? 3 : 10;
+    int retry_count = 0;
+    int retry_delay = custom_backend ? 2 : 10;
+
     while (true) {
         auto display = board.GetDisplay();
         display->SetStatus(Lang::Strings::CHECKING_NEW_VERSION);
@@ -484,11 +486,11 @@ void Application::CheckNewVersion() {
                     break;
                 }
             }
-            retry_delay *= 2;  // Double the retry delay
+            retry_delay = custom_backend ? std::min(retry_delay * 2, 10) : retry_delay * 2;
             continue;
         }
         retry_count = 0;
-        retry_delay = 10;  // Reset retry delay
+        retry_delay = custom_backend ? 2 : 10;
 
         if (ota_->HasNewVersion()) {
             if (UpgradeFirmware(ota_->GetFirmwareUrl(), ota_->GetFirmwareVersion())) {
@@ -535,13 +537,22 @@ void Application::InitializeProtocol() {
 
     display->SetStatus(Lang::Strings::LOADING_PROTOCOL);
 
-    if (ota_->HasMqttConfig()) {
-        protocol_ = std::make_unique<MqttProtocol>();
-    } else if (ota_->HasWebsocketConfig()) {
+    if (board.UsesCustomBackend()) {
         protocol_ = std::make_unique<WebsocketProtocol>();
     } else {
-        ESP_LOGW(TAG, "No protocol specified in the OTA config, using MQTT");
-        protocol_ = std::make_unique<MqttProtocol>();
+#if CONFIG_PREFER_WEBSOCKET
+        if (ota_->HasWebsocketConfig()) {
+            protocol_ = std::make_unique<WebsocketProtocol>();
+        } else
+#endif
+            if (ota_->HasMqttConfig()) {
+            protocol_ = std::make_unique<MqttProtocol>();
+        } else if (ota_->HasWebsocketConfig()) {
+            protocol_ = std::make_unique<WebsocketProtocol>();
+        } else {
+            ESP_LOGW(TAG, "No protocol specified in the OTA config, using MQTT");
+            protocol_ = std::make_unique<MqttProtocol>();
+        }
     }
 
     protocol_->OnConnected([this]() { DismissAlert(); });
@@ -641,7 +652,8 @@ void Application::InitializeProtocol() {
                 if (cJSON_IsString(text)) {
                     std::vector<TextGlyph> glyphs;
                     uint8_t bpp = 0;
-                    if (!TextGlyphPayload::Parse(root, glyphs, bpp)) {
+                    if (!Assets::GetInstance().text_font_capability().glyph_push ||
+                        !TextGlyphPayload::Parse(root, glyphs, bpp)) {
                         glyphs.clear();
                     }
                     ESP_LOGI(TAG, "<< %s", text->valuestring);
@@ -657,7 +669,8 @@ void Application::InitializeProtocol() {
             if (cJSON_IsString(text)) {
                 std::vector<TextGlyph> glyphs;
                 uint8_t bpp = 0;
-                if (!TextGlyphPayload::Parse(root, glyphs, bpp)) {
+                if (!Assets::GetInstance().text_font_capability().glyph_push ||
+                    !TextGlyphPayload::Parse(root, glyphs, bpp)) {
                     glyphs.clear();
                 }
                 ESP_LOGI(TAG, ">> %s", text->valuestring);
@@ -708,10 +721,9 @@ void Application::InitializeProtocol() {
             if (cJSON_IsObject(payload)) {
                 CJsonStringUniquePtr payload_json(cJSON_PrintUnformatted(payload));
                 if (payload_json) {
-                    Schedule(
-                        [this, display, payload_str = std::string(payload_json.get())]() {
-                            display->SetChatMessage("system", payload_str.c_str());
-                        });
+                    Schedule([this, display, payload_str = std::string(payload_json.get())]() {
+                        display->SetChatMessage("system", payload_str.c_str());
+                    });
                 }
             } else {
                 ESP_LOGW(TAG, "Invalid custom message format: missing payload");
@@ -739,6 +751,7 @@ void Application::ShowActivationCode(const std::string& code, const std::string&
 
     // This sentence uses 9KB of SRAM, so we need to wait for it to finish
     Alert(Lang::Strings::ACTIVATION, message.c_str(), "link", Lang::Sounds::OGG_ACTIVATION);
+    Board::GetInstance().GetDisplay()->SetActivationCode(code);
 
     for (const auto& digit : code) {
         auto it = std::find_if(digit_sounds.begin(), digit_sounds.end(),
@@ -1206,6 +1219,11 @@ void Application::Reboot() {
 }
 
 bool Application::UpgradeFirmware(const std::string& url, const std::string& version) {
+#if !CONFIG_ALLOW_FIRMWARE_UPDATES
+    ESP_LOGW(TAG, "Firmware updates disabled; use the custom USB release");
+    Board::GetInstance().GetDisplay()->ShowNotification("USB flashing required");
+    return false;
+#endif
     auto& board = Board::GetInstance();
     auto display = board.GetDisplay();
 

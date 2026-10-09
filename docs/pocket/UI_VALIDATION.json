@@ -1,0 +1,185 @@
+{
+  "logical_size": [
+    280,
+    240
+  ],
+  "physical_native_size": [
+    240,
+    280
+  ],
+  "panel_offsets": [
+    20,
+    0
+  ],
+  "landscape_flipped": false,
+  "conversation_build": "PASS",
+  "diagnostics_build": "PASS",
+  "upstream_regression_build": "PASS: latest bread-compact-esp32-lcd build completed after optional LCD initial-color interface",
+  "host_tests_passed": 105,
+  "simulation": {
+    "renderer": "actual LVGL 9.5 and firmware font; synthetic state/audio/setup data",
+    "framebuffer": "RGB565 partial 11200-byte strip",
+    "bounded_flush_rectangles": "PASS",
+    "flush_count": 12704,
+    "flushed_pixels": 34674520,
+    "create_destroy_cycles": 4,
+    "stable_lvgl_free_bytes": 2083304,
+    "face_model_duration_simulated_hours": 3,
+    "mouth_closes_without_pcm": "PASS",
+    "utf8_bounds": "PASS",
+    "preview": "ui-preview/companion-preview.png",
+    "black_edge_pixels_all_states": "PASS; starts with stale white simulated pixels",
+    "expressions_rendered": 14,
+    "audio_reactive_preview": "ui-preview/audio-reactive-preview.gif",
+    "pink_blush_all_expressions": "PASS: sampled actual RGB565 pixels, including sleepy mode",
+    "independent_blink_and_mouth": "PASS: actual-level mouth stays open through blinks",
+    "hands_free_turn_pose": "PASS: transcript confirmation, 900ms quiet hold, resumed voice, reply reset and 60s timeout",
+    "randomized_blinks": "PASS: natural blinks and occasional double blink in deterministic simulation"
+  },
+  "hardware": {
+    "installation": "PASS: current conversation image flashed on COM4; boot/table/app hashes verified; NVS sectors preserved",
+    "landscape_orientation_and_borders": "PENDING physical observation of current image",
+    "visual_expressions": "PASS user observation: updated white eyes and pink oval cheeks visible on black background; detailed animation acceptance pending",
+    "runtime_metrics": "PASS short setup capture only; full conversation/extended run pending",
+    "sustained_30fps": "PENDING: active target only; 33ms requested with adaptive slowdown",
+    "microphone_and_output_transfers": "PARTIAL: nonzero mic input, real Opus loopback and tone/output transfers, zero RX/TX transfer errors; 12 DMA overruns (2 in clean run); speech intelligibility unverified",
+    "audio_reactive_expressions": "PENDING: actual mic response, thinking gaze and audible playback/mouth alignment",
+    "audible_playback": "FAIL: latest retest, user heard no volume-20/50 tones or either voice replay; SD-to-3V3 previously confirmed",
+    "wifi_and_custom_conversation": "Wi-Fi setup AP/DHCP 192.168.4.1 started; provisioning and custom backend deployment/conversation pending",
+    "extended_endurance": "PENDING physical run; simulated model advances three hours",
+    "startup": "PASS: 25-second post-flash boot capture; correct compile identity, I2S initialization, 280x240 UI and Wi-Fi setup; no panic/watchdog/brownout observed",
+    "startup_internal_heap_bytes": {
+      "free_at_5s": 56532,
+      "minimum": 54512,
+      "largest_block": 53248,
+      "scope": "25-second boot/setup capture, no cloud conversation or audio playback"
+    },
+    "startup_ui_diagnostics": {
+      "ticks_at_5s": 61,
+      "refreshes_at_5s": 58,
+      "slow_ticks": 1,
+      "latest_refresh_us": 6613,
+      "max_refresh_us": 95679,
+      "scope": "First five seconds, includes startup full refresh; not sustained frame-rate evidence"
+    },
+    "flash_observation": {
+      "time_utc": "2026-10-09T12:48:59.919109+00:00",
+      "first_attempt": "USB serial read stopped during app write; recovered by full retry",
+      "retry": "PASS: all three parts verified",
+      "boot_log": "UI_FLASH_BOOT.log",
+      "flash_log": "UI_FLASH_RETRY.log",
+      "image_sha256": "d9305c84637a4109967f40e99bc6c41d1206a43f99e02a252553f31d493243f7",
+      "compile_time": "Oct 9 2026 18:02:43"
+    },
+    "sound_retest": "See AUDIO_RETEST_RESULTS.json; volume restored to 20, local tests only"
+  },
+  "limitations": [
+    "No software backlight dimming: BLK tied to 3V3",
+    "PCM amplitude animation is not phoneme or measured acoustic lip sync",
+    "No tear synchronization wire: visible tearing needs observation"
+  ],
+  "background": "#000000 (screen/root/plate and startup clear)",
+  "wifi_implementation": {
+    "installed_variant_before_fix": "offline diagnostics; Wi-Fi deliberately disabled",
+    "portal": "Board-owned WPA2 Shreeharsh Assistant SoftAP with AP and STA netifs",
+    "success_gate": "STA DHCP nonzero IP and NVS credential readback",
+    "portal_trials": "3 maximum, 15s deadline each, 1s/2s backoff",
+    "station_scan_backoff": "existing upstream 10..300s",
+    "passwords_in_logs": "none",
+    "encryption_at_rest": "NVS retained; flash/NVS encryption not enabled",
+    "javascript_syntax": "PASS",
+    "native_credential_and_deadline_tests": "PASS",
+    "device_provisioning": "User confirmed Connected and IP on previous installed firmware; current image requires acceptance",
+    "router_recovery": "PENDING router unavailable/reconnection test",
+    "installed_ssid": "Shreeharsh Assistant; retained exact configured name"
+  },
+  "previous_redesign_hardware": {
+    "flash": "PASS; separate verified boot/table/app COM4",
+    "boot_capture_seconds": 30,
+    "firmware_compile": "2026-10-08 21:53:06",
+    "user_visual": "Animated face with a white area around it before black-background correction",
+    "minimum_internal_heap_bytes": 115576,
+    "steady_refresh_us": 25366,
+    "initial_max_refresh_us": 93818,
+    "slow_ticks": 0,
+    "panic_watchdog": "not observed during 30s capture"
+  },
+  "date": "2026-10-09",
+  "revision": "Audio-reactive turn poses, warm white eyes and layered pastel blush",
+  "host_tests_failed": 0,
+  "host_tests_skipped": 0,
+  "historical_pre_custom_image_hardware": {
+    "installation": "PASS: final Shreeharsh Assistant conversation image installed on COM4; boot/table/app hashes verified; NVS preserved",
+    "landscape_orientation_and_borders": "PENDING user observation of final black-background image and landscape orientation",
+    "visual_expressions": "PENDING",
+    "runtime_metrics": "PENDING",
+    "sustained_30fps": "PENDING: active target only",
+    "microphone_and_output_transfers": "PENDING for this new build",
+    "audible_playback": "Prior tests failed; SD enable connection not confirmed",
+    "wifi_reconnection_and_official_conversation": "PENDING corrected conversation firmware",
+    "extended_endurance": "PENDING",
+    "startup": "PASS: 35s COM4 capture, ESP32-D0WD-V3 rev3.1, no saved Wi-Fi namespace, LVGL initialized, Wi-Fi setup state reached, WPA2 AP Shreeharsh Assistant and DHCP 192.168.4.1 started; no panic/watchdog reset",
+    "black_screen_visual_confirmation": "PENDING user observation: firmware startup and native RGB565 black-edge simulation pass; updated panel appearance awaits user observation",
+    "startup_internal_heap_bytes": {
+      "free_after_setup": 58252,
+      "minimum": 56908,
+      "largest_block": 57344,
+      "scope": "35s setup AP and idle; no phone provisioning, router DHCP, cloud or audio test"
+    },
+    "startup_ui_diagnostics": {
+      "ticks": 673,
+      "refreshes": 668,
+      "slow_ticks": 1,
+      "latest_refresh_us": 6131,
+      "max_refresh_us": 102255,
+      "scope": "boot/setup first 35 seconds; includes first full refresh"
+    },
+    "scope": "Older installed official-service firmware; these observations do not validate the current custom face firmware"
+  },
+  "layout": {
+    "cheeks": "Two symmetrical 40x24 layered pink ovals under outer eye portions",
+    "caption_start_y": 185,
+    "thinking_dots_max_bottom_y": 178,
+    "framework": "LVGL 9.5; no changes to GPIO, panel dimensions, offsets or Wi-Fi portal"
+  },
+  "audio_observers": "Existing atomic microphone RMS and successful-write playback RMS; no audio gain, DMA, clocks or networking changes",
+  "allocation_policy": "No full-screen firmware framebuffer; fixed cheek objects allocated at construction; per-frame geometry/color updates reuse objects",
+  "firmware_builds": {
+    "conversation": {
+      "result": "PASS",
+      "merged_bytes": 2234032,
+      "application_bytes": 2168496,
+      "sha256": "d9305c84637a4109967f40e99bc6c41d1206a43f99e02a252553f31d493243f7",
+      "canonical_builder": "scripts/build.py",
+      "image_checks": "ESP32 chip, appended boot/app hashes, 4MB partitions, no PSRAM, variant identity",
+      "static_linker_memory": {
+        "IRAM": {
+          "used": 71587,
+          "free": 59485
+        },
+        "DRAM": {
+          "used": 53859,
+          "free": 126877
+        }
+      }
+    },
+    "diagnostics": {
+      "result": "PASS",
+      "merged_bytes": 2218896,
+      "application_bytes": 2153360,
+      "sha256": "17bda8a835318476373b6e2b8c779b82ff526710e10b844ec4925054ce809b37",
+      "canonical_builder": "scripts/build.py",
+      "image_checks": "ESP32 chip, appended boot/app hashes, 4MB partitions, no PSRAM, variant identity",
+      "static_linker_memory": {
+        "IRAM": {
+          "used": 71587,
+          "free": 59485
+        },
+        "DRAM": {
+          "used": 53859,
+          "free": 126877
+        }
+      }
+    }
+  }
+}

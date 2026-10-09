@@ -1,0 +1,51 @@
+{
+  "time_utc": "2026-10-09T12:57:05.562020+00:00",
+  "board": "ESP32-D0WD-V3, COM4; current conversation firmware with audio-reactive face",
+  "firmware_sha256": "d9305c84637a4109967f40e99bc6c41d1206a43f99e02a252553f31d493243f7",
+  "tone": {
+    "volume20_count": 3,
+    "volume50_count": 3,
+    "digital_i2s": "PASS: 11520 tone frames transferred",
+    "audible": "FAIL: user heard no sound at either volume"
+  },
+  "microphone": {
+    "captured_frames_total": 111360,
+    "initial_recording_sampled_rms": [
+      409,
+      371
+    ],
+    "speech_test_sampled_rms": [
+      362,
+      1248,
+      504,
+      410,
+      576,
+      988
+    ],
+    "interpretation": "Nonzero and varying microphone signal captured; recognizable speech quality remains unverified",
+    "rx_transfer_errors": 0,
+    "dma_overruns_total": 12,
+    "clean_run_overruns": 2,
+    "capture_acceptance": "PARTIAL: driver reads succeeded; DMA dropped blocks occurred, including without verbose polling"
+  },
+  "opus_loopback": {
+    "recordings": 4,
+    "digital_output": "PASS: real upstream encode/decode and successful output-frame transfers",
+    "speech_replay_audible": "FAIL: user heard no sound from either speech replay",
+    "speaker_output_frames_total_including_tones": 121920,
+    "tx_transfer_errors": 0
+  },
+  "volume_after_test": 20,
+  "state_after_test": "wifi_configuring",
+  "cloud_used": false,
+  "physical_sound_result": "FAIL: speaker output remains silent; digital transfer success does not establish electrical I2S signals or amplifier/speaker operation",
+  "minimum_internal_heap_bytes": 39788,
+  "free_internal_heap_after_clean_test": 56260,
+  "logs": [
+    "AUDIO_RETEST_BASELINE.log",
+    "AUDIO_RETEST_TONES.log",
+    "AUDIO_RETEST_VOLUME50_QUIET.log",
+    "AUDIO_RETEST_SPEECH.log",
+    "AUDIO_RETEST_CLEAN.log"
+  ]
+}
