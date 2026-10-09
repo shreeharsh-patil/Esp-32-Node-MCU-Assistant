@@ -25,3 +25,9 @@ backend/node_modules/
 backend/.vercel/
 backend/.env*
 !backend/.env.example
+
+docs/pocket/*.log
+docs/pocket/DEVICE*
+docs/pocket/ui-preview/*.ppm
+docs/pocket/ui-preview/reactive-[0-9]*.png
+docs/pocket/ui-preview/boot-[0-9]*.png
