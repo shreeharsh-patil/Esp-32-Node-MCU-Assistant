@@ -3,8 +3,10 @@
 Scope: current GitHub `main` at `c2f9b541d33f52f8d6b542f8424a7bd6ca972959`,
 classic ESP32-WROOM-32 / 30-pin NodeMCU, custom Pocket board only. The animated
 black face, display pins, backend implementation, credentials and other boards
-are retained. No device flash or credential erase has been performed for this
-repair. Device installation requires the owner's approval.
+are retained. After explicit owner approval ("flash"), the diagnostics image was
+installed on COM4. NVS was privately backed up and verified byte-for-byte
+unchanged afterward. Conversation firmware has not been installed for this
+repair; no credential erase was performed.
 
 ## Findings and changes
 
@@ -72,7 +74,7 @@ verified):
 |---|---|
 | INMP441 VDD; GND; L/R | 3V3; common GND; GND |
 | INMP441 SCK / WS / SD | 26 / 25 / 34 |
-| MAX98357A VIN; GND | verified 5 V source; common GND |
+| MAX98357A VIN; GND | VIN/5V source (actual voltage unmeasured); common GND |
 | MAX98357A BCLK / LRCLK / DIN | 26 / 25 / 22 |
 | MAX98357A GAIN / SD_MODE | GAIN initially open; SD_MODE requires verified module bias |
 | Speaker | SPK+ / SPK−; neither terminal grounded |
@@ -117,6 +119,51 @@ conflict in the branded guide.
 Without a meter/scope these tests stay pending. Do not ground either speaker
 terminal or connect the amplifier's 5 V supply to the microphone.
 
+### Approved diagnostics installation and physical retest
+
+On October 11, the owner approved installing the diagnostics image. The guarded
+flasher identified an ESP32-D0WD-V3, revision 3.1, with 4 MB flash and verified
+all written component hashes. The entire 0x9000–0xefff NVS region matched its
+private pre-flash backup byte-for-byte after installation. Private backups are
+ignored and are not part of the PR.
+
+The new image started with its expected offline board identity and IDF v6.1.
+I2S initialization/start passed. The driver's full-duplex RX-master-to-slave
+message is expected: the paired TX channel owns their common clock. Startup
+internal heap was 112,464 B, minimum 110,592 B. Network/cloud are disabled in
+this firmware, so this higher heap margin is not a conversation measurement.
+
+The repaired tone accepted 6,080 frames (4,800 tone plus 1,280 trailing silence),
+zero TX errors and nonzero matching left/right words. Post-gain PCM16 peak was
+120, and a logged example was L=R=0xffca0000 (signed PCM16 −54). The owner again
+reported **no sound**, with SD left open. Acoustic output remains **FAIL**;
+physical VIN, enable and I2S data at the amplifier remain unmeasured.
+The owner confirmed the amplifier power wire is connected to ESP32 VIN and
+the speaker wires connect only to SPK+ and SPK−. Those intended connections
+are confirmed by description, not by voltage or continuity measurements.
+
+Both five-second recordings exported 80,000 frames with valid CRC32 and no RX
+errors or active DMA overruns. The initial environment recording had RMS 2459.46,
+peak 32768 and 0.14% clipping (ambient conditions were not controlled). The
+requested spoken phrase recording had RMS 913.66, peak 4546 and **0% clipping**.
+After listening to that WAV on the computer, the owner reported **"Clear
+recognizable words"**. This independently establishes intelligible microphone
+speech without needing the ESP32 amplifier.
+
+An upstream `testaudio` run with two `diag` commands during recording captured
+27,840 frames and sent 26,880 replay frames through the real Opus path, with
+zero added RX/TX errors and zero active DMA drops. Internal heap returned to
+112,192 B, with a minimum of 97,636 B. Observed minimum remaining task stacks:
+audio_input 3012 B, audio_output 972 B, opus_codec 4708 B, pocket_control 1768 B.
+These short offline runs establish bounded-path stability, not prolonged
+Wi-Fi/Gemini conversation stability or acoustic replay.
+
+Local logs: `AUDIO_REPAIR_DIAGNOSTICS_BOOT.log`,
+`AUDIO_REPAIR_DIAGNOSTICS_TONE.log`, `AUDIO_REPAIR_MIC_BASELINE.log`,
+`AUDIO_REPAIR_MIC_SPEECH.log` and `AUDIO_REPAIR_OPUS_STRESS.log`. Listening
+artifacts are `pocket-release/mic-baseline.wav` and `mic-speech.wav`. Runtime
+facts and CRC32 values are recorded in `AUDIO_REPAIR_RESULTS.json`.
+
 ## Build and computer validation
 
 Activate ESP-IDF 6.1 as described in the board README, then use the canonical
@@ -143,8 +190,9 @@ build with ESP-IDF v6.1. Image inspection verified classic ESP32 chip headers,
 boot/app checksums, partition bounds and the 4 MB/no-PSRAM configuration. The
 diagnostics merged image is 2,229,424 bytes; conversation is 2,244,704 bytes.
 Their app images fit the 0x3f0000 factory partition. Local checksum verification
-is separate from installation and uses no serial access. Physical heap minima,
-PCM export reliability and repaired-image audio remain **NOT YET VERIFIED**.
+is separate from installation and uses no serial access. Short offline PCM
+export, clear microphone speech and heap/stack checks passed after installation;
+amplifier electrical output and complete conversation remain unverified.
 
 ## Local retest after approved installation
 
@@ -227,18 +275,19 @@ silent amplifier.
 
 ## Acceptance report
 
-Statuses refer to physical evidence; repaired-image physical acceptance remains
-pending until installed and tested. Historical failures are retained.
+Statuses refer to physical evidence after approved diagnostics installation.
+Historical failures are retained in the preceding evidence and JSON. PASS for
+short offline tests does not establish prolonged conversation stability.
 
 | Test | Result | Evidence |
 |---|---|---|
 | GPIO configuration | PASS | Source config + host regression: audio 26/25/34/22; display 18/23/13/27/14; BOOT 0 |
-| I2S initialization | PASS | October 9 boot/transfer logs; October 11 installed-image tone accepted; repair image not yet installed |
-| Microphone recording | NOT YET VERIFIED | Five-second PCM export needs repaired image; October 9 historical capture had 111,360 varying samples |
-| Speech intelligibility | NOT YET VERIFIED | Independent spoken WAV and human listening required |
-| RX DMA stability | FAIL | 12 October 9 drops including 2 clean-run drops; repaired-image stability not yet verified |
-| Speaker digital output | PASS | October 11 installed-image 1,920 frames, zero TX errors; repaired image not yet installed |
+| I2S initialization | PASS | Repaired diagnostics image booted; shared 16 kHz/32-bit clock start ESP_OK |
+| Microphone recording | PASS | Two five-second 80,000-frame exports, valid CRC32, zero RX errors |
+| Speech intelligibility | PASS | Owner heard clear recognizable words in independently played spoken WAV |
+| RX DMA stability | PASS | Zero drops in both five-second captures and Opus capture with diagnostic polling; prolonged conversation not yet verified |
+| Speaker digital output | PASS | Repaired tone: 6,080 accepted frames, nonzero matching L/R words, zero TX errors; real Opus replay 26,880 frames |
 | Amplifier electrical output | NOT YET VERIFIED | Actual VIN, SD/MODE, physical I2S and differential 440 Hz measurements missing |
-| Audible speaker output | FAIL | Owner heard no October 11 tone with SD open; repaired image not yet installed |
-| Wi-Fi connectivity | NOT YET VERIFIED | October 11 installed device in setup, DHCP pending; no new credentials written |
+| Audible speaker output | FAIL | Owner heard no repaired-image tone with SD open |
+| Wi-Fi connectivity | NOT YET VERIFIED | Current diagnostics image intentionally disables network; NVS preserved |
 | Gemini voice conversation | NOT YET VERIFIED | Local backend tests pass; deployed hello, STT, audible reply and next turn required |
