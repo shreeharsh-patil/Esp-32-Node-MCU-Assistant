@@ -56,13 +56,13 @@ public:
     void PrintSignalExpectations() {}
     void EnableOutput(bool enabled) { playback_.store(enabled); }
     uint32_t TxPeak() const { return block_peak_; }
-    int WriteSamples(const int16_t* data, int samples, float output_gain) {
+    int WriteSamples(const int16_t* data, int samples, float output_gain, float voice_boost=1.0f) {
         assert(playback_.load());
         if (fail_) return 0;
         block_peak_=0;
         for (int i=0; i<samples; ++i) {
             const int32_t word=pocket::ConvertSpeaker(data[i], speaker_previous_,
-                                                     speaker_filtered_, safe_volume_.load(), output_gain);
+                                                     speaker_filtered_, safe_volume_.load(), output_gain, voice_boost);
             tx_words_[i*2]=tx_words_[i*2+1]=word;
             const auto peak=static_cast<uint32_t>(std::abs(word / 65536));
             assert(peak <= static_cast<uint32_t>(output_gain * 32767));

@@ -57,6 +57,6 @@ private:
     float mic_dc_ = 0, speaker_previous_ = 0, speaker_filtered_ = 0;
     std::mutex output_mutex_;
     std::mutex input_mutex_;
-    int WriteSamples(const int16_t* data, int samples, float output_gain);
+    int WriteSamples(const int16_t* data, int samples, float output_gain, float voice_boost = 1.0f);
     int ReadCaptured(int16_t* dest, int samples);
 };

@@ -2,6 +2,8 @@ import OpusScript from 'opusscript';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const FRAME_SAMPLES = 1440; // 60 ms at the provider's 24 kHz output rate.
+const FRAME_MS = 60;
+const PLAYBACK_LEAD_MS = 180; // Let the ESP32 buffer a few frames across Wi-Fi jitter.
 const FRAME_BYTES = FRAME_SAMPLES * 2;
 const MAX_PACKET = OpusScript.MAX_PACKET_SIZE;
 const MAX_PCM_CHUNK = 65536;
@@ -25,6 +27,7 @@ export class VoiceBridge {
     this.pcm = Buffer.alloc(0);
     this.listening = false;
     this.speaking = false;
+    this.playbackDrainUntil = 0;
     this.closed = false;
     this.provider = null;
     this.nextAudioAt = 0;
@@ -102,12 +105,18 @@ export class VoiceBridge {
 
   async sendFrame(pcm) {
     if (this.closed) return;
-    const wait = this.nextAudioAt - Date.now();
+    // An exactly real-time sender leaves no audio ready when a Wi-Fi packet is
+    // late. Start each burst up to three frames ahead, then pace the stream.
+    // Clamp the lead after provider pauses so a large reply cannot flood the
+    // ESP32's bounded decode queue.
+    const now = Date.now();
+    this.nextAudioAt = Math.max(this.nextAudioAt, now - PLAYBACK_LEAD_MS);
+    const wait = this.nextAudioAt - now;
     if (wait > 0) await sleep(wait);
     if (this.closed) return;
     if (this.ws.bufferedAmount > 65536) throw new Error('Device output backpressure');
     this.ws.send(this.encoder.encode(pcm, FRAME_SAMPLES));
-    this.nextAudioAt = Date.now() + 60;
+    this.nextAudioAt += FRAME_MS;
   }
 
   async run() {
@@ -142,6 +151,7 @@ export class VoiceBridge {
           }
           if (this.speaking) this.sendJson({ type: 'tts', state: 'stop' });
           this.speaking = false;
+          this.playbackDrainUntil = Date.now() + 1000;
           // Firmware sends listen/start after its playback queue drains.
         } else if (event.kind === 'interrupted') {
           this.ws.close(1000, 'Conversation interrupted');

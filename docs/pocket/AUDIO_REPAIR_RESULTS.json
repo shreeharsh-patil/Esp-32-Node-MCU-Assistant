@@ -7,11 +7,11 @@
   "credentials_erased": false,
   "build_source_sha256": {
     "main/audio/audio_service.cc": "2f088b4bc31c05275f0bf8bc6bdd5944828180ef23352eadd9e9cf7d439857b7",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "8ae1da14cadb0b9e8968448da79296e8acd6fc5e394f9086c61c49ed0675718f",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "666832f7563ad2ed6e09dfa9d44752062370b1ccd67ad26bf4be408818f8a28e",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_board.cc": "5a1a506a5921d3dec53145078fa7b115162c51958d990c1aabbe889eefb44d1e",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "0e7bb00c49bbacc1b2da3052e2366a54dc57d673f5298582adec219163901443",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "043761c3e696a8cac5013bfbd63f3a9b127041cc4001ffcbd5d547d8db5f5c9c",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_board.cc": "5a88f6a569a01f0252ff209e428e0763fad0d5e51653e8a20b5bb9521b9c4a3d",
     "scripts/pocket_serial_capture.py": "4c6760287e0c06e5f79daef29032d3d9c7b7678e8cfa0cc8ec5ef3679ae75066",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "3e63b64c2156aeb953570487a6476f1dcd30ad2d1cec35f06a0aa3187280f1de",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "c5753aa376d82cb978ac6057260e37be0f79c55547e09711972ec4f194ddcd9e",
     "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_wifi.cc": "527981f44a6fbd1755e06fa3e4b626cd64e156568d45f291426c5f49660aed92",
     "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_wifi_policy.h": "aca5fd65778554c3d9b0c0d6ef156896d849aa7a989cdc9da7c281db066fa1dd"
   },
@@ -40,10 +40,10 @@
       "diagnostics": {
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32-diagnostics.bin",
-        "bytes": 2229840,
-        "sha256": "e83d9ad1421be44f841475a684fd5542d05787bf99f546a64568c98547ddb52d",
+        "bytes": 2230064,
+        "sha256": "d75fe9828cca94dce42ba32a79378b9b413bbc60b9bf49ddf2b62c5d56af6a72",
         "idf": "v6.1",
-        "app_bytes": 2164304,
+        "app_bytes": 2164528,
         "factory_partition_bytes": 4128768,
         "physical_acceptance": "NOT YET VERIFIED",
         "components": {
@@ -56,8 +56,8 @@
             "sha256": "c9a826e85500d14d1854ce78e47452d4614a1be371bbd056278d2cb3398fbbfd"
           },
           "diagnostics/xiaozhi.bin": {
-            "bytes": 2164304,
-            "sha256": "3d10fd0101315320fc8bbad33510308d91a93b2c750c5f6049a3379aa77a7b22"
+            "bytes": 2164528,
+            "sha256": "6e8bb33560f0c9224dd368c95f7dc6782e8f5c8cbed502d7c0e36133e3ef95d3"
           }
         },
         "log": "pocket-audio-voice80-build-diagnostics.log"
@@ -65,10 +65,10 @@
       "conversation": {
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32.bin",
-        "bytes": 2245104,
-        "sha256": "3b732045e7326b587ae08ff3fa8d56f495044d48aba95d99800225d1ea5704ca",
+        "bytes": 2245248,
+        "sha256": "53dc69b4d017f50f4a8989bf0b41689f296cd22da96c59007eaa193f25b09d75",
         "idf": "v6.1",
-        "app_bytes": 2179568,
+        "app_bytes": 2179712,
         "factory_partition_bytes": 4128768,
         "physical_acceptance": "NOT YET VERIFIED",
         "components": {
@@ -81,8 +81,8 @@
             "sha256": "c9a826e85500d14d1854ce78e47452d4614a1be371bbd056278d2cb3398fbbfd"
           },
           "conversation/xiaozhi.bin": {
-            "bytes": 2179568,
-            "sha256": "3d45435e0ecfdb5538c486d4181ddc6397b9dbb77d2c3d4599c31e70db3f26e0"
+            "bytes": 2179712,
+            "sha256": "8e7166e5c021b0a4b3c495d0e34dbc2f8b9a45140db7f04102c622ae80352c0c"
           }
         },
         "log": "pocket-audio-voice80-build-conversation.log"
@@ -426,6 +426,29 @@
       "docs/pocket/AUDIO_REPAIR_80_TONE_PLAYBACK.log"
     ]
   },
+  "live_voice_repair": {
+    "observed_faults": [
+      "Live reply began and the device WebSocket disconnected before the spoken answer finished",
+      "Later owner prompts yielded no response; serial logs showed Listening and microphone capture but no reply",
+      "Owner reported speech still too quiet at saved volume 100 before the corrected boosted image"
+    ],
+    "changes": [
+      "Normal speech output gets a 2x boost with a soft knee under the existing 80% peak cap",
+      "Backend Opus sender starts with 180 ms of buffer lead and paces subsequent frames",
+      "Backend delays timed renewal while a reply is active, within a 25-second bound",
+      "Periodic diagnostics output is disabled during conversation firmware operation"
+    ],
+    "conversation_firmware_sha256": "53dc69b4d017f50f4a8989bf0b41689f296cd22da96c59007eaa193f25b09d75",
+    "conversation_firmware_flash": "PASS: corrected release image verified and flashed to COM4; app flash hash verified",
+    "nvs_preservation": "PASS: all 24576 bytes identical before and after corrected flash",
+    "post_flash_boot": "PASS: Wi-Fi connected, WebSocket handshake completed, and device entered Listening",
+    "tests": "34 backend tests and 113 host firmware tests pass; conversation firmware built with ESP-IDF 6.1",
+    "live_backend_deployment": "PENDING: owner hosts production from a different Vercel account",
+    "speech_audibility_and_reply_completion": "PENDING owner live test with corrected firmware and deployed backend",
+    "conversation_memory": "IMPLEMENTED IN SOURCE: bounded recent encrypted turns reloaded per device from Neon when dashboard history is enabled; live deployment pending",
+    "current_web_search": "IMPLEMENTED IN SOURCE: optional comma-separated FIRECRAWL_API_KEYS; Live tool calls have a 10-second total search budget; live key and deployment pending",
+    "youtube_on_esp32": "UNSUPPORTED: display cannot run required YouTube player; audio-only extraction is not implemented"
+  },
   "normal_voice_update": {
     "authorization": "Owner selected Apply to voice playback (Recommended) and testing spoken replay",
     "normal_output_gain_and_cap_percent": 80,
@@ -490,6 +513,6 @@
       "audible_acceptance": "NOT YET VERIFIED: owner requested moving to hosted backend test",
       "log": "docs/pocket/AUDIO_REPAIR_VOICE80_REPLAY_READY_REPEAT.log"
     },
-    "firmware_sha256": "e83d9ad1421be44f841475a684fd5542d05787bf99f546a64568c98547ddb52d"
+    "firmware_sha256": "53dc69b4d017f50f4a8989bf0b41689f296cd22da96c59007eaa193f25b09d75"
   }
 }

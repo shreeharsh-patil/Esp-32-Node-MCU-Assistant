@@ -363,7 +363,9 @@ private:
         ESP_LOGI(TAG, "Hardware tests A-N PENDING until run on the connected board");
         int stable = 1, previous = gpio_get_level(POCKET_PTT_GPIO);
         int64_t changed = esp_timer_get_time();
+#if CONFIG_POCKET_HARDWARE_DIAGNOSTICS
         int64_t next_heap = changed + 30000000;
+#endif
         while (true) {
             const int64_t now = esp_timer_get_time();
             const int raw = gpio_get_level(POCKET_PTT_GPIO);
@@ -431,10 +433,12 @@ private:
 #if !CONFIG_POCKET_HARDWARE_DIAGNOSTICS
             PollHandsFree(now / 1000);
 #endif
+#if CONFIG_POCKET_HARDWARE_DIAGNOSTICS
             if (now > next_heap) {
                 Diagnostics();
                 next_heap = now + 30000000;
             }
+#endif
             vTaskDelay(pdMS_TO_TICKS(20));
         }
     }

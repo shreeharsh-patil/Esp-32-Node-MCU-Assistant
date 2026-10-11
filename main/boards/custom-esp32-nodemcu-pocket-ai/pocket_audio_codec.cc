@@ -171,10 +171,11 @@ int PocketAudioCodec::ReadCaptured(int16_t* dest, int samples) {
 }
 
 int PocketAudioCodec::Write(const int16_t* data, int samples) {
-    return WriteSamples(data, samples, 0.80f);
+    return WriteSamples(data, samples, 0.80f, 2.0f);
 }
 
-int PocketAudioCodec::WriteSamples(const int16_t* data, int samples, float output_gain) {
+int PocketAudioCodec::WriteSamples(const int16_t* data, int samples, float output_gain,
+                                   float voice_boost) {
     std::lock_guard<std::mutex> lock(output_mutex_);
     if (!ready_ || !playback_.load())
         return 0;
@@ -189,7 +190,7 @@ int PocketAudioCodec::WriteSamples(const int16_t* data, int samples, float outpu
             squares += sample * sample;
             const int32_t word =
                 pocket::ConvertSpeaker(data[done + i], speaker_previous_, speaker_filtered_,
-                                       safe_volume_.load(), output_gain);
+                                       safe_volume_.load(), output_gain, voice_boost);
             tx_words_[i * 2] = tx_words_[i * 2 + 1] = word;
             const int64_t pcm = word / 65536;
             tx_squares += pcm * pcm;

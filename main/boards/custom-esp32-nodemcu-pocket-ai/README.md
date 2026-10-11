@@ -63,6 +63,8 @@ and while flashing. Maximum button/serial listening duration is 30 seconds.
 Normal output defaults to 80% of a quadratic software volume control, with saved
 volume preferences retained. An absolute 80% full-scale peak cap applies, including MCP requests
 for 100%. This is a digital limit, not a measured speaker wattage guarantee.
+Spoken audio has a twofold software boost with a soft peak limiter under that
+same cap. The owner has set the saved volume to 100 after finding 80 too quiet.
 There is no automatic test tone at boot.
 
 Audio repair diagnostics: `tone` uses a 300 ms, 440 Hz waveform at a fixed,

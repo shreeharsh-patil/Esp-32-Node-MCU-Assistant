@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { firecrawlKeys } from './search.js';
 
 export function readConfig(env = process.env) {
   const base = env.PUBLIC_BASE_URL || '';
@@ -33,6 +34,7 @@ export function readConfig(env = process.env) {
   return {
     base: base.replace(/\/$/, ''), token,
     apiKeys,
+    firecrawlKeys: firecrawlKeys(env),
     keyCooldownMs: cooldown * 1000,
     adminToken, encryptionKey, databaseUrl: env.DATABASE_URL || '',
     model: env.GEMINI_LIVE_MODEL || 'gemini-3.8-live',

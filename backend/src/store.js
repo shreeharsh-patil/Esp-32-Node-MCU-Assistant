@@ -157,6 +157,14 @@ export class DatabaseStore {
         [randomUUID(), sessionId, deviceId, role, encrypt(text.slice(0, 6000), this.config.encryptionKey), now()]);
     }
   }
+  async recentTurns(deviceId, limit = 8) {
+    if (!validDeviceId(deviceId)) return [];
+    await this.init();
+    const rows = await this.query(
+      'SELECT role, encrypted FROM assistant_messages WHERE device_id = $1 ORDER BY created_at DESC, role ASC LIMIT $2',
+      [deviceId, Math.min(12, Math.max(1, limit))]);
+    return rows.reverse().map(row => ({ role: row.role, text: String(decrypt(row.encrypted, this.config.encryptionKey)) }));
+  }
   async conversations(deviceId = '') {
     if (deviceId && !validDeviceId(deviceId)) throw publicError('Invalid device ID');
     await this.init();

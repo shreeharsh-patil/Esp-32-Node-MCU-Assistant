@@ -54,6 +54,18 @@ int main() {
     assert(loud > static_cast<int64_t>(26000) * 65536);
     assert(loud <= static_cast<int64_t>(26214) * 65536);
     assert(loud % 65536 == 0);
+    // Speech gets a useful boost, but even a full-scale sample stays under
+    // the same absolute speaker limit. Diagnostic tones keep their own gain.
+    previous = filtered = 0;
+    const int64_t voice_normal = pocket::ConvertSpeaker(10000, previous, filtered, 100);
+    previous = filtered = 0;
+    const int64_t voice_boosted =
+        pocket::ConvertSpeaker(10000, previous, filtered, 100, 0.80f, 2.0f);
+    assert(voice_boosted > voice_normal * 17 / 10);
+    previous = filtered = 0;
+    const int64_t voice_peak =
+        pocket::ConvertSpeaker(INT16_MAX, previous, filtered, 100, 0.80f, 2.0f);
+    assert(voice_peak <= static_cast<int64_t>(26214) * 65536);
     for (int volume : {-100, 0, 20, 100, 1000}) {
         previous = filtered = 0;
         for (int i = 0; i < 10000; ++i) {

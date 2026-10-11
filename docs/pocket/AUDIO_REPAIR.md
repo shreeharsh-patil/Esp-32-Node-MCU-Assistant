@@ -285,7 +285,7 @@ Final validation: **PASS**, 113 host tests (including the extended tone);
 **PASS**, both Pocket variants and the representative `bread-compact-esp32-lcd`
 build with ESP-IDF v6.1. Image inspection verified classic ESP32 chip headers,
 boot/app checksums, partition bounds and the 4 MB/no-PSRAM configuration. The
-diagnostics merged image is 2,229,840 bytes; conversation is 2,245,104 bytes.
+diagnostics merged image is 2,230,064 bytes; conversation is 2,245,248 bytes.
 Their app images fit the 0x3f0000 factory partition. Local checksum verification
 is separate from installation and uses no serial access. Short offline PCM
 export, clear microphone speech and heap/stack checks passed after installation;
@@ -379,11 +379,23 @@ python scripts/pocket_flash.py --port COM4
 The source path remains mic → lite engine → 16 kHz/60 ms Opus → authenticated
 WSS → backend/Gemini → 24 kHz Opus → decoder/resampler → fixed 16 kHz I2S.
 The application defers automatic capture until playback queues drain, and the
-board reopens idle sessions with bounded retry. Backend local tests and syntax
-checks pass. The deployed `https://esp-32-node-mcu-assistant.vercel.app/health`
-returns HTTP 200 and `configured: true`. Device Wi-Fi provisioning and a real
-Gemini voice conversation still require the owner to complete hotspot setup and
-test the hardware.
+board reopens idle sessions with bounded retry. The device has joined the
+owner's Wi-Fi and reached Listening through a successful WebSocket handshake.
+The deployed `https://esp-32-node-mcu-assistant.vercel.app/health` returned HTTP
+200 and `configured: true`; that endpoint alone does not prove provider audio.
+One live reply began and was cut by a WebSocket disconnect. Later owner trials
+produced no reply. The revised backend defers timed renewal until the reply
+finishes and sends a short initial audio buffer; it still needs deployment by
+the owner from the Vercel account hosting this URL. The revised conversation
+firmware adds capped speech gain and removes periodic diagnostics logging from
+live conversation. The fresh image was flashed on COM4 with NVS preserved, and
+booted through Wi-Fi and WebSocket to Listening. Speech audibility and a complete
+two-turn conversation with both revisions are still awaiting owner acceptance.
+The pending backend revision also reloads a bounded window of encrypted per-device
+history from Neon and supports current web questions through private, comma-separated
+Firecrawl keys. Neither feature has been verified against the owner's production
+deployment. The ESP32 panel cannot host the YouTube player, so YouTube playback on
+its own display and speaker is outside this hardware's supported capabilities.
 
 ## Acceptance report
 
@@ -405,5 +417,5 @@ prolonged conversation stability.
 | Audible speech replay | NOT YET VERIFIED on latest repeat | Initial volume-80 replay not heard; stronger-input repeat sent 26,880 frames without errors, listening result unconfirmed |
 | Conversation firmware install | PASS | Fixed-AP-key image hashes verified after COM4 flash; 24,576-byte NVS matched before/after |
 | Vercel health | PASS | Production `/health`: HTTP 200, `configured: true` |
-| Wi-Fi connectivity | NOT YET VERIFIED | Owner still needs to complete setup hotspot provisioning |
-| Gemini voice conversation | NOT YET VERIFIED | Deployed provider hello, STT, audible reply and next-turn tests remain |
+| Wi-Fi connectivity | PASS | Device rejoined the provisioned network after the latest flash and completed its WebSocket handshake |
+| Gemini voice conversation | PARTIAL | One live reply began but its socket closed mid-reply; later prompts yielded no answer; revised backend is not deployed yet |

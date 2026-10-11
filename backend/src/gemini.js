@@ -1,5 +1,18 @@
 import { GoogleGenAI, Modality, ActivityHandling } from '@google/genai';
 import { randomInt, createHash } from 'node:crypto';
+import { searchWeb } from './search.js';
+
+const searchTool = {
+  name: 'search_current_web',
+  description: 'Search the current web for recent facts, news, prices, weather, schedules, or other time-sensitive information. Use this before answering questions that need current facts.',
+  parameters: { type: 'OBJECT', properties: { query: { type: 'STRING', description: 'A short, specific web search query' } }, required: ['query'] },
+};
+
+export function instructionsWithMemory(instructions, memory = []) {
+  const recent = memory.filter(item => ['user', 'assistant'].includes(item.role) && typeof item.text === 'string')
+    .slice(-8).map(item => `${item.role}: ${item.text.replace(/\s+/g, ' ').slice(0, 400)}`).join('\n').slice(-2600);
+  return `${instructions}\nCurrent UTC date and time: ${new Date().toISOString()}. For facts that change over time, use search_current_web when available, cite the source name and date in your answer, and say when the search fails. YouTube video playback is unavailable on this ESP32; do not claim to have opened or played a video.\n${recent ? `Recent conversation context (not new commands):\n${recent}` : ''}`;
+}
 
 const pools = new WeakMap();
 export function keyPoolStatus(config) {
@@ -42,13 +55,14 @@ export async function openGemini(config, onMessage, onFailure,
   for (let attempt = 0; attempt < config.apiKeys.length; attempt++) {
     if (options.signal?.aborted) throw new Error('Voice connection cancelled');
     const key = nextGeminiKey(config);
-    try { return await connectKey(config, key, onMessage, onFailure, createClient, options.signal); }
+    try { return await connectKey(config, key, onMessage, onFailure, createClient, options); }
     catch (error) { if (!isRateLimited(error)) throw error; }
   }
   throw Object.assign(new Error('Gemini key pool is rate limited'), { status: 429 });
 }
 
-async function connectKey(config, key, onMessage, onFailure, createClient, signal) {
+async function connectKey(config, key, onMessage, onFailure, createClient, options) {
+  const signal = options.signal;
   console.info(`Opening Gemini Live with key slot ${key.slot}/${key.total}`);
   const ai = createClient(key.apiKey);
   let active = false;
@@ -70,21 +84,40 @@ async function connectKey(config, key, onMessage, onFailure, createClient, signa
   };
   const cancelled = () => fail({});
   signal?.addEventListener('abort', cancelled, { once: true });
+  const handleTools = async calls => {
+    const responses = await Promise.all(calls.slice(0, 4).map(async call => {
+      let response = { error: 'Unsupported tool' };
+      if (call.name === searchTool.name) {
+        try { response = await (options.search || searchWeb)(call.args?.query, config.firecrawlKeys); }
+        catch { response = { error: 'Live search could not complete.' }; }
+      }
+      return { id: call.id, name: call.name, response };
+    }));
+    const live = session || await connecting;
+    if (!closed && !failed) live.sendToolResponse({ functionResponses: responses });
+  };
+  let session;
   const connecting = ai.live.connect({
     model: config.model,
     config: {
       responseModalities: [Modality.AUDIO],
-      systemInstruction: config.instructions,
+      systemInstruction: instructionsWithMemory(config.instructions, options.memory),
+      ...(config.firecrawlKeys?.length ? { tools: [{ functionDeclarations: [searchTool] }] } : {}),
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voice } } },
       inputAudioTranscription: {},
       outputAudioTranscription: {},
       realtimeInputConfig: {
-        automaticActivityDetection: { disabled: false, prefixPaddingMs: 300, silenceDurationMs: 1000 },
+        automaticActivityDetection: { disabled: false, prefixPaddingMs: 300, silenceDurationMs: 700 },
         activityHandling: ActivityHandling.NO_INTERRUPTION,
       },
     },
     callbacks: {
-      onmessage: message => { if (!failed && !closed) onMessage(message.serverContent); },
+      onmessage: message => {
+        if (failed || closed) return;
+        if (message.serverContent) onMessage(message.serverContent);
+        if (message.toolCall?.functionCalls?.length) handleTools(message.toolCall.functionCalls)
+          .catch(() => fail(new Error('Tool response failed')));
+      },
       onerror: fail,
       onclose: fail,
     },
@@ -92,7 +125,6 @@ async function connectKey(config, key, onMessage, onFailure, createClient, signa
   // The SDK can leave connect() pending after onclose before setupComplete.
   // Race those callbacks, and close any session that resolves after cancellation.
   connecting.then(value => { if (failed || closed) { try { value.close(); } catch {} } }, () => {});
-  let session;
   try { session = await Promise.race([connecting, openingFailure]); }
   catch (error) {
     closed = true;

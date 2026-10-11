@@ -140,7 +140,7 @@ test('real Opus capture and playback cross the bridge, stay half-duplex, and res
   assert.equal(f.capture[0].length, 1920);
   assert.ok(f.capture[0].some(value => value !== 0));
   f.reply({ inputTranscription: { text: 'Hello' }, outputTranscription: { text: 'Hi Shreeharsh' },
-    modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: tone(3500, 24000).toString('base64') } }] },
+    modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: tone(10000, 24000).toString('base64') } }] },
     turnComplete: true });
   await until(() => messages.some(message => message.type === 'tts' && message.state === 'start'));
   ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'auto' }));
@@ -148,7 +148,7 @@ test('real Opus capture and playback cross the bridge, stay half-duplex, and res
   await until(() => messages.some(message => message.type === 'tts' && message.state === 'stop'));
   assert.equal(f.capture.length, 1);
   const audio = messages.filter(Buffer.isBuffer);
-  assert.equal(audio.length, 3); // Last partial 60ms frame is padded.
+  assert.equal(audio.length, 7); // Last partial 60ms frame is padded.
   for (const packet of audio) assert.equal(speaker.decode(packet).length, 2880);
   assert.equal(messages.at(-1).state, 'stop');
   assert.ok(messages.findIndex(message => message.type === 'tts' && message.state === 'start') < messages.findIndex(Buffer.isBuffer));
@@ -160,6 +160,25 @@ test('real Opus capture and playback cross the bridge, stay half-duplex, and res
   ws.close();
   await once(ws, 'close');
   await until(() => f.closed === 1);
+});
+
+test('session renewal lets a reply finish before closing the device socket', async t => {
+  const f = await fixture(t, { config: { ...config, seconds: 0.3 } });
+  const { ws, messages } = await f.socket();
+  const closed = once(ws, 'close');
+  f.reply({ modelTurn: { parts: [{ inlineData: {
+    mimeType: 'audio/pcm;rate=24000', data: tone(24000, 24000).toString('base64'),
+  } }] } });
+  f.reply({ turnComplete: true });
+  await until(() => messages.some(message => message.type === 'tts' && message.state === 'start'));
+  await sleep(450); // The configured renewal time has passed mid-reply.
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  await until(() => messages.some(message => message.type === 'tts' && message.state === 'stop'));
+  await sleep(300); // Let the ESP32 consume the last queued speaker frames.
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  const [code] = await closed;
+  assert.equal(code, 1000);
+  assert.equal(messages.filter(Buffer.isBuffer).length, 17);
 });
 
 test('oversized WS packets close the socket instead of decoding unbounded input', async t => {

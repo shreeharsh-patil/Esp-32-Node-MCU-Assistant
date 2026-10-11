@@ -9,6 +9,7 @@ import { DatabaseStore, validDeviceId } from './store.js';
 import { installAdmin } from './admin.js';
 import { ConversationJournal } from './history.js';
 import { fileURLToPath } from 'node:url';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 export function createBackend(config, providerFactory = openGemini, options = {}) {
   const store = options.store || (config.databaseUrl ? new DatabaseStore(config) : null);
@@ -84,7 +85,20 @@ export function createBackend(config, providerFactory = openGemini, options = {}
     let opening = false;
     let closed = false;
     const providerAbort = new AbortController();
-    const deadline = setTimeout(() => ws.close(1000, 'Session renewal'), runtime.seconds * 1000);
+    // A timed renewal during a reply discards its remaining audio on the
+    // ESP32. Give the active reply a short grace period, then reconnect.
+    const renew = () => {
+      if (closed || ws.readyState !== 1) return;
+      if (bridge && (bridge.speaking || bridge.pendingBytes || bridge.pcm.length ||
+        Date.now() < bridge.playbackDrainUntil)) {
+        renewalTimer = setTimeout(renew, 250);
+        return;
+      }
+      ws.close(1000, 'Session renewal');
+    };
+    let renewalTimer = setTimeout(renew, runtime.seconds * 1000);
+    const renewalLimit = setTimeout(() => ws.close(1000, 'Session renewal'),
+      (runtime.seconds + 25) * 1000);
     const helloDeadline = setTimeout(() => ws.close(1008, 'Client hello required'), 5000);
     let checkingDevice = false;
     const heartbeat = setInterval(async () => {
@@ -103,10 +117,12 @@ export function createBackend(config, providerFactory = openGemini, options = {}
       }
     }, 20000);
     ws.on('error', () => ws.close(1011, 'Connection error'));
-    ws.on('close', () => {
+    ws.on('close', code => {
+      console.info('Voice connection closed', code, bridge?.speaking ? 'during_reply' : 'between_replies');
       closed = true;
       providerAbort.abort();
-      clearTimeout(deadline); clearTimeout(helloDeadline); clearInterval(heartbeat);
+      clearTimeout(renewalTimer); clearTimeout(renewalLimit);
+      clearTimeout(helloDeadline); clearInterval(heartbeat);
       bridge?.destroy();
       if (journal) (async () => {
         await journal.finish(); await store.endSession(sessionId);
@@ -126,9 +142,11 @@ export function createBackend(config, providerFactory = openGemini, options = {}
           const timer = setTimeout(() => { expired = true; providerAbort.abort(); ws.close(1011, 'Voice provider timeout'); }, 8000);
           try {
             if (store) await store.startSession(sessionId, identity.id, runtime.model);
+            const memory = store && runtime.historyEnabled && typeof store.recentTurns === 'function' ?
+              await Promise.race([store.recentTurns(identity.id).catch(() => []), sleep(1200).then(() => [])]) : [];
             const provider = await providerFactory(runtime,
               content => { try { bridge.enqueue(content); journal?.observe(content); } catch { ws.close(1009, 'Reply exceeds bounds'); } },
-              () => ws.close(1011, 'Voice provider unavailable'), { signal: providerAbort.signal });
+              () => ws.close(1011, 'Voice provider unavailable'), { signal: providerAbort.signal, memory });
             if (closed || expired) { provider.close(); return; }
             bridge.provider = provider;
             bridge.sendJson({ type: 'hello', transport: 'websocket', session_id: sessionId,
