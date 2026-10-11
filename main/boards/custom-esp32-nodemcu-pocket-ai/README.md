@@ -65,6 +65,13 @@ The output starts at 20% of a quadratic software volume control. An absolute
 for 100%. This is a digital limit, not a measured speaker wattage guarantee.
 There is no automatic test tone at boot.
 
+Audio repair diagnostics: `tone` uses a 300 ms, 440 Hz waveform at a fixed,
+temporary low gain, then restores the saved volume. `mic` measures five seconds
+of capture; the serial utility can export PCM to WAV using a temporary
+921600-baud handshake and 512 B scratch buffer. The normal console returns to
+115200 baud. `testaudio` retains the upstream Opus replay test. See
+[audio repair and acceptance](../../../docs/pocket/AUDIO_REPAIR.md).
+
 The single factory application occupies `0x10000..0x400000`. OTA firmware writes
 are disabled in both discovery and manual update paths. Custom discovery returns
 audio configuration and server time; there is no official activation or fallback

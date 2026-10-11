@@ -10,6 +10,17 @@ BOARD = ROOT / 'main/boards/custom-esp32-nodemcu-pocket-ai'
 
 
 class PocketBoardTests(unittest.TestCase):
+    def test_audio_display_and_button_pins_match_nodemcu_wiring_without_conflicts(self):
+        import re
+        config = (BOARD / 'config.h').read_text(encoding='utf-8')
+        expected = dict(AUDIO_BCLK=26, AUDIO_WS=25, AUDIO_MIC_DIN=34, AUDIO_SPEAKER_DOUT=22,
+                        DISPLAY_SCK=18, DISPLAY_MOSI=23, DISPLAY_CS=13, DISPLAY_DC=27,
+                        DISPLAY_RST=14, POCKET_PTT_GPIO=0)
+        actual = {name: int(pin) for name, pin in
+                  re.findall(r'^#define (\w+) GPIO_NUM_(\d+)$', config, re.M)}
+        self.assertEqual(actual, expected)
+        self.assertEqual(len(set(actual.values())), len(actual))
+
     def test_native_custom_backend_url_and_device_token_bounds(self):
         compiler = shutil.which('g++')
         if not compiler:

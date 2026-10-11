@@ -861,14 +861,22 @@ void AudioService::SetModelsList(srmodel_list_t* models_list) {
 }
 
 void AudioService::PrintDiagnostics() {
-    std::lock_guard<std::mutex> lock(audio_queue_mutex_);
+    // UART logging can block longer than a small board's RX DMA queue.
+    // Snapshot under the lock; never prevent capture/encoding while printing.
+    size_t encode, send, decode, playback, test;
+    {
+        std::lock_guard<std::mutex> lock(audio_queue_mutex_);
+        encode = audio_encode_queue_.size();
+        send = audio_send_queue_.size();
+        decode = audio_decode_queue_.size();
+        playback = audio_playback_queue_.size();
+        test = audio_testing_queue_.size();
+    }
     ESP_LOGI(TAG, "QUEUES encode=%u/%u send=%u/%u decode=%u/%u playback=%u/%u test=%u/%u",
-             static_cast<unsigned>(audio_encode_queue_.size()), MAX_ENCODE_TASKS_IN_QUEUE,
-             static_cast<unsigned>(audio_send_queue_.size()), MAX_SEND_PACKETS_IN_QUEUE,
-             static_cast<unsigned>(audio_decode_queue_.size()), MAX_DECODE_PACKETS_IN_QUEUE,
-             static_cast<unsigned>(audio_playback_queue_.size()), MAX_PLAYBACK_TASKS_IN_QUEUE,
-             static_cast<unsigned>(audio_testing_queue_.size()),
-             static_cast<unsigned>(kAudioTestingPacketCapacity));
+             static_cast<unsigned>(encode), MAX_ENCODE_TASKS_IN_QUEUE, static_cast<unsigned>(send),
+             MAX_SEND_PACKETS_IN_QUEUE, static_cast<unsigned>(decode), MAX_DECODE_PACKETS_IN_QUEUE,
+             static_cast<unsigned>(playback), MAX_PLAYBACK_TASKS_IN_QUEUE,
+             static_cast<unsigned>(test), static_cast<unsigned>(kAudioTestingPacketCapacity));
 #if INCLUDE_xTaskGetHandle
     for (const char* name : {"audio_input", "audio_output", "opus_codec", "pocket_control"}) {
         if (auto task = xTaskGetHandle(name))

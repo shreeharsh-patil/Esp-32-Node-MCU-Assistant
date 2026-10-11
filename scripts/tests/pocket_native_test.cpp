@@ -21,6 +21,31 @@ int main() {
     for (int i = 0; i < 10000; ++i)
         sample = pocket::ConvertMic(0x10000000, dc, 1);
     assert(std::abs(sample) < 2);
+    // INMP441's unused low 8 slot bits must not affect PCM16 conversion.
+    float other_dc = 0;
+    dc = 0;
+    assert(pocket::ConvertMic(-0x12340000, dc, 4) ==
+           pocket::ConvertMic(-0x12340000 + 255, other_dc, 4));
+    // A real 440 Hz waveform must survive the capped output conversion,
+    // carry both signs, and keep its 16-bit word in the top of the I2S slot.
+    for (int volume : {20, 50}) {
+        float previous = 0, filtered = 0;
+        int positive = 0, negative = 0, crossings = 0;
+        int32_t last = 0;
+        for (int n = 0; n < 16000; ++n) {
+            const int16_t input =
+                static_cast<int16_t>(6000 * std::sin(n * 6.2831853 * 440 / 16000));
+            const int32_t output = pocket::ConvertSpeaker(input, previous, filtered, volume);
+            positive += output > 0;
+            negative += output < 0;
+            crossings += output > 0 && last <= 0;
+            assert(output % 65536 == 0);
+            assert(std::abs(static_cast<int64_t>(output)) <= static_cast<int64_t>(130) * 65536);
+            last = output;
+        }
+        assert(positive > 7000 && negative > 7000);
+        assert(crossings >= 439 && crossings <= 441);
+    }
     float previous = 0, filtered = 0;
     assert(pocket::ConvertSpeaker(INT16_MAX, previous, filtered, 0) == 0);
     for (int volume : {-100, 0, 20, 100, 1000}) {

@@ -144,6 +144,7 @@ private:
     uint32_t test_rx_before_ = 0;
     uint32_t test_tx_before_ = 0;
     uint32_t test_rx_errors_ = 0, test_tx_errors_ = 0, test_peak_ = 0;
+    uint32_t test_overruns_ = 0;
     int64_t test_finish_ = 0;
     std::array<char, 96> command_{};
     size_t command_length_ = 0;
@@ -226,7 +227,11 @@ private:
                  audio_.Rms(), audio_.Peak(), audio_.InputFrames(), audio_.OutputFrames(),
                  audio_.RxErrors(), audio_.TxErrors(), audio_.Overruns());
         ESP_LOGI(TAG,
-                 "DMA sample storage=12288B; PCM scratch=2048B; TFT strip=11200B; PSRAM disabled");
+                 "DMA sample storage=16384B; RX queue margin=56ms; PCM scratch=2048B; "
+                 "TFT strip=11200B; PSRAM disabled");
+        ESP_LOGI(TAG, "AUDIO mic_clipped_total=%lu tx_pcm16_rms=%lu tx_pcm16_peak=%lu (after gain)",
+                 audio_.MicClipped(), audio_.TxRms(), audio_.TxPeak());
+        audio_.PrintSignalExpectations();
         Application::GetInstance().GetAudioService().PrintDiagnostics();
         if (display_)
             display_->PrintUiDiagnostics();
@@ -303,7 +308,16 @@ private:
             }
             audio_.SetOutputVolume(static_cast<int>(volume));
             GetDisplay()->ShowNotification("Volume set (output capped)");
-        } else if (strcmp(command, "testaudio") == 0 || strcmp(command, "mic") == 0) {
+        } else if (strcmp(command, "mic") == 0) {
+            if (app.GetDeviceState() != kDeviceStateWifiConfiguring || test_until_ || pressed_ ||
+                !app.GetAudioService().IsIdle()) {
+                ESP_LOGW(TAG, "mic requires idle setup; wait for replay to finish");
+                return;
+            }
+            ESP_LOGI(TAG,
+                     "MIC capture %s; PCM export needs host CRC; speech PENDING host listening",
+                     audio_.DiagnosticRecord() ? "PASS" : "FAIL");
+        } else if (strcmp(command, "testaudio") == 0) {
             if (app.GetDeviceState() != kDeviceStateWifiConfiguring || test_until_ || pressed_) {
                 ESP_LOGW(TAG, "testaudio requires Wi-Fi setup mode; enter setup first");
                 return;
@@ -312,6 +326,7 @@ private:
             test_tx_before_ = audio_.OutputFrames();
             test_rx_errors_ = audio_.RxErrors();
             test_tx_errors_ = audio_.TxErrors();
+            test_overruns_ = audio_.Overruns();
             StartTalk();
             test_until_ = esp_timer_get_time() + 1700000;
             ESP_LOGI(TAG, "TEST E/H recording real mic through upstream Opus loopback");
@@ -397,8 +412,13 @@ private:
                 ESP_LOGI(TAG,
                          "TEST E digital capture %s frames=%lu measured_peak=%lu; acoustic mic "
                          "check PENDING",
-                         captured && audio_.RxErrors() == test_rx_errors_ ? "PASS" : "FAIL",
+                         captured && audio_.RxErrors() == test_rx_errors_ &&
+                                 audio_.Overruns() == test_overruns_
+                             ? "PASS"
+                             : "FAIL",
                          captured, test_peak_);
+                ESP_LOGI(TAG, "TEST E RX dropped DMA blocks=%lu",
+                         audio_.Overruns() - test_overruns_);
                 ESP_LOGI(
                     TAG,
                     "TEST H Opus loopback digital output %s frames=%lu; audible comparison PENDING",
