@@ -40,7 +40,7 @@ int main() {
             negative += output < 0;
             crossings += output > 0 && last <= 0;
             assert(output % 65536 == 0);
-            assert(std::abs(static_cast<int64_t>(output)) <= static_cast<int64_t>(130) * 65536);
+            assert(std::abs(static_cast<int64_t>(output)) <= static_cast<int64_t>(1300) * 65536);
             last = output;
         }
         assert(positive > 7000 && negative > 7000);
@@ -59,7 +59,7 @@ int main() {
         for (int i = 0; i < 10000; ++i) {
             const int16_t value = i % 2 ? INT16_MAX : INT16_MIN;
             const int64_t output = pocket::ConvertSpeaker(value, previous, filtered, volume);
-            assert(std::abs(output) <= static_cast<int64_t>(2622) * 65536);
+            assert(std::abs(output) <= static_cast<int64_t>(26214) * 65536);
             assert(output % 65536 == 0);
             if (volume <= 0)
                 assert(output == 0);

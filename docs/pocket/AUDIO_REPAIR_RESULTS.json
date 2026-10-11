@@ -7,18 +7,18 @@
   "credentials_erased": false,
   "build_source_sha256": {
     "main/audio/audio_service.cc": "2f088b4bc31c05275f0bf8bc6bdd5944828180ef23352eadd9e9cf7d439857b7",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "382f93e6c716aec209187fc97bd551f624464993bad2c365f37eb49f82cc9406",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "d8bf0e84cfc07f7fd134f5a9a0e5d04cc26a2c57fd5d2d69e67aeee01ca105b7",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "8ae1da14cadb0b9e8968448da79296e8acd6fc5e394f9086c61c49ed0675718f",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "666832f7563ad2ed6e09dfa9d44752062370b1ccd67ad26bf4be408818f8a28e",
     "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_board.cc": "5a1a506a5921d3dec53145078fa7b115162c51958d990c1aabbe889eefb44d1e",
-    "scripts/pocket_serial_capture.py": "12f65069e23c5908e116097626e3eacff6735068ec992ae0a7765288e3bf4815",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "896eeadb7e24b6aa61ed6e8908dc3d2e0fd40a9b367e7357d1506f8bad562c1b"
+    "scripts/pocket_serial_capture.py": "4c6760287e0c06e5f79daef29032d3d9c7b7678e8cfa0cc8ec5ef3679ae75066",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "3e63b64c2156aeb953570487a6476f1dcd30ad2d1cec35f06a0aa3187280f1de"
   },
   "validation": {
     "host_tests": {
       "result": "PASS",
       "tests": 113,
       "skipped": 0,
-      "log": "pocket-audio-80-host-tests.log",
+      "log": "pocket-audio-voice80-host-tests.log",
       "runner": "scripts/pocket_host_tests.py (Windows portable runner, UTF-8)"
     },
     "backend_tests": {
@@ -39,7 +39,7 @@
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32-diagnostics.bin",
         "bytes": 2229840,
-        "sha256": "9fe5886715702764bbb447a28f56e1d77f8d062f8443c6b76d9a25aa93a367a0",
+        "sha256": "03d6c8f723cdbbee1932680580a5f826efd746f7abb4e4fb8c7901106b58a4f8",
         "idf": "v6.1",
         "app_bytes": 2164304,
         "factory_partition_bytes": 4128768,
@@ -55,16 +55,16 @@
           },
           "diagnostics/xiaozhi.bin": {
             "bytes": 2164304,
-            "sha256": "399ed7f8001032c59c6d8f8c78f08eec376f55625aaf42d8fa32cd35374a72fb"
+            "sha256": "c5173a7df45f072de6ee5a47a411752912c8a6ff640b92e7834d7e7be30e8253"
           }
         },
-        "log": "pocket-audio-80-build-diagnostics.log"
+        "log": "pocket-audio-voice80-build-diagnostics.log"
       },
       "conversation": {
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32.bin",
         "bytes": 2245120,
-        "sha256": "5a46138f1fc76f6c6479c4ae4ccaea4d8293ae7ba95d0dd6c4560567f89724a6",
+        "sha256": "ef531d2999d1d085892675e8ae5f3bda254087976c0c7ce8d51d123b21832113",
         "idf": "v6.1",
         "app_bytes": 2179584,
         "factory_partition_bytes": 4128768,
@@ -80,10 +80,10 @@
           },
           "conversation/xiaozhi.bin": {
             "bytes": 2179584,
-            "sha256": "284f98dc708b045ea10b00ae15e5021144bf2b247676a2640d2586e0bf1f1868"
+            "sha256": "c352414cd6ac581f990fb83029e30d0243f4d9d7041da2062f708ec964c96322"
           }
         },
-        "log": "pocket-audio-80-build-conversation.log"
+        "log": "pocket-audio-voice80-build-conversation.log"
       }
     }
   },
@@ -129,14 +129,14 @@
     "physical_i2s_clocks_and_data": "NOT YET VERIFIED",
     "differential_amplifier_audio": "NOT YET VERIFIED",
     "speaker_continuity": "NOT YET VERIFIED",
-    "repaired_audible_output": "NOT YET VERIFIED",
+    "repaired_audible_output": "PASS",
     "wifi_connection": "NOT YET VERIFIED",
     "gemini_conversation_and_resume": "NOT YET VERIFIED",
     "runtime_heap_and_stack_margins": "NOT YET VERIFIED",
     "offline_runtime_heap_and_stack_short_runs": "PASS",
     "prolonged_conversation_dma_stability": "NOT YET VERIFIED"
   },
-  "speaker_root_cause": "Unresolved: quiet tone was inaudible. Owner reports a very light buzz with approximately 16 times the sample amplitude and five-second duration, with amplifier power instructed to ESP32 3V3. Clear tone reproduction and useful speech volume remain unconfirmed. Actual supply/SD bias, amplifier-side clocks/data and speaker continuity remain unmeasured.",
+  "speaker_root_cause": "Software attenuation was a confirmed contributor to insufficient test level. The repeated five-second test with 80% digital gain/cap produced a clear tone reported by the owner, with PCM16 peak 19244 and zero TX errors. Earlier tests were silent or faint. This does not establish attenuation as the sole cause of every earlier silent trial. Actual electrical supply, SD bias and continuity remain unmeasured. Normal voice playback was still limited to 8%; the owner approved applying the higher gain and testing spoken replay.",
   "microphone_root_cause": "Confirmed diagnostic queue-mutex blocking and stale idle DMA corrected. Repaired offline image exported two complete five-second recordings with valid CRC32 and zero active DMA drops/read errors. Owner confirmed clear recognizable words from computer WAV playback. Prolonged Wi-Fi/Gemini capture stability remains unverified.",
   "exact_amplifier": {
     "vendor": "SmartElex",
@@ -353,8 +353,58 @@
     "approximate_post_gain_pcm16_peak": 19240,
     "amplitude_ratio_to_prior_long_tone": 10,
     "total_frames": 81280,
+    "flashed": true,
+    "physical_acceptance": "PASS: owner heard clear tone on requested repeat; normal speech playback remains pending",
+    "firmware_sha256": "9fe5886715702764bbb447a28f56e1d77f8d062f8443c6b76d9a25aa93a367a0",
+    "authorization": "Owner requested louder playback and specified make it 80 during the authorized diagnostics flash/test session",
+    "component_flash_hashes_verified": true,
+    "nvs_preservation": {
+      "result": "PASS",
+      "before_after_match": "Byte-for-byte"
+    },
+    "digital_playback": {
+      "result": "PASS",
+      "duration_ms": 5000,
+      "frames": 81280,
+      "tx_errors": 0,
+      "post_gain_pcm16_peak": 19244
+    },
+    "audible_playback": {
+      "result": "FAIL",
+      "owner_observation": "No sound on first 80% trial"
+    },
+    "repeat": {
+      "authorization": "Owner requested run that test again of sound",
+      "digital_playback": {
+        "result": "PASS",
+        "duration_ms": 5000,
+        "added_frames": 81280,
+        "cumulative_frames": 162560,
+        "post_gain_pcm16_peak": 19244,
+        "left_word": "0xddb20000",
+        "right_word": "0xddb20000",
+        "tx_errors": 0
+      },
+      "audible_playback": {
+        "result": "PASS",
+        "owner_observation": "Clear tone"
+      },
+      "log": "docs/pocket/AUDIO_REPAIR_80_TONE_REPEAT1.log"
+    },
+    "logs": [
+      "docs/pocket/AUDIO_REPAIR_80_TONE_FLASH.log",
+      "docs/pocket/AUDIO_REPAIR_80_TONE_PLAYBACK.log"
+    ]
+  },
+  "normal_voice_update": {
+    "authorization": "Owner selected Apply to voice playback (Recommended) and testing spoken replay",
+    "normal_output_gain_and_cap_percent": 80,
+    "default_volume": 80,
+    "requested_runtime_volume": 80,
+    "quiet_tones_gain_and_cap_percent": 8,
+    "saved_preferences_retained": true,
     "flashed": false,
-    "physical_acceptance": "NOT YET VERIFIED",
-    "firmware_sha256": "9fe5886715702764bbb447a28f56e1d77f8d062f8443c6b76d9a25aa93a367a0"
+    "speech_playback": "NOT YET VERIFIED",
+    "firmware_sha256": "03d6c8f723cdbbee1932680580a5f826efd746f7abb4e4fb8c7901106b58a4f8"
   }
 }

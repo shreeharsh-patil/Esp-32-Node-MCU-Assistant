@@ -16,7 +16,7 @@ PocketAudioCodec::PocketAudioCodec() : application_(&Application::GetInstance())
     duplex_ = true;
     input_sample_rate_ = AUDIO_INPUT_SAMPLE_RATE;
     output_sample_rate_ = AUDIO_OUTPUT_SAMPLE_RATE;
-    output_volume_ = 20;
+    output_volume_ = 80;
     input_gain_ = 4.0f;
     i2s_chan_config_t channels = I2S_CHANNEL_DEFAULT_CONFIG(0, I2S_ROLE_MASTER);
     // 7 queued blocks = 56 ms scheduling margin, +4096 B for paired RX/TX.
@@ -80,7 +80,7 @@ void PocketAudioCodec::Start() {
     if (!ready_ || started_)
         return;
     Settings settings("audio", false);
-    output_volume_ = std::clamp(static_cast<int>(settings.GetInt("output_volume", 20)), 0, 100);
+    output_volume_ = std::clamp(static_cast<int>(settings.GetInt("output_volume", 80)), 0, 100);
     safe_volume_.store(output_volume_);
     esp_err_t err = i2s_channel_enable(tx_handle_);
     if (err == ESP_OK)
@@ -171,7 +171,7 @@ int PocketAudioCodec::ReadCaptured(int16_t* dest, int samples) {
 }
 
 int PocketAudioCodec::Write(const int16_t* data, int samples) {
-    return WriteSamples(data, samples, 0.08f);
+    return WriteSamples(data, samples, 0.80f);
 }
 
 int PocketAudioCodec::WriteSamples(const int16_t* data, int samples, float output_gain) {

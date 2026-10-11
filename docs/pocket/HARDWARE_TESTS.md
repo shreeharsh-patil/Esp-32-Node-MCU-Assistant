@@ -56,9 +56,10 @@ DMA ring of silence to drain the tone. The absolute output cap is retained.
 Earlier firmware used 120 ms at the user's saved volume, including zero/mute.
 There is no automatic test tone at boot. The owner subsequently requested a
 manual louder test and specified 80%. `tone loud` runs for five seconds with
-an 80% digital gain/cap and restores volume/output state. Normal playback retains
-its 8% cap. Electrical measurements remain unverified; acoustic acceptance of
-the louder test requires the owner's listening result.
+an 80% digital gain/cap and restores volume/output state. The owner heard a clear
+tone on the repeat and approved applying that gain to normal voice playback.
+Quiet test commands retain their 8% cap. Electrical measurements and clear
+spoken-audio replay still require acceptance.
 
 `diag` reports actual current/minimum internal heap, largest allocation, DMA heap,
 queue occupancy/capacities, microphone RMS/peak, RX/TX frame counts/errors,

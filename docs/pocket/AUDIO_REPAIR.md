@@ -51,10 +51,12 @@ repair; no credential erase was performed.
    After the faint buzz, the owner requested a louder test and specified 80%.
    `tone loud` uses an 80% digital gain/cap for five seconds, approximately
    19,240 PCM16 peak counts with the same 24,000-count source waveform. This is
-   about ten times the sample amplitude of `tone long`. Only the explicit idle
-   test uses the higher gain; normal playback remains limited to 8%. The 80%
-   limit is not an acoustic loudness percentage. Installation and listening
-   acceptance of this new test are **NOT YET VERIFIED**.
+   about ten times the sample amplitude of `tone long`. Initially only the
+   explicit idle test used the higher gain. The owner heard a clear tone on its
+   repeat and approved applying the higher gain to normal voice playback too.
+   Normal playback now has the 80% digital cap, with an 80% default volume and
+   saved preferences retained. Quiet tests still explicitly use 8%. The 80%
+   limit is not an acoustic loudness percentage.
 6. **Independent microphone recording:** `mic` captures five seconds of 16 kHz
    mono PCM16 after left-slot conversion, DC removal and configured gain. RMS,
    peak, clipping percentage, captured frame count and error/overrun deltas
@@ -183,6 +185,19 @@ The owner reported **"little noise kind of sound from speaker"**, clarified as
 **"a buzz sound but it was very light"**. Some sound is now reported; clear
 440 Hz reproduction and useful speech volume remain **NOT YET VERIFIED**.
 Logs: `AUDIO_REPAIR_LONG_TONE_FLASH.log` and `AUDIO_REPAIR_LONG_TONE_PLAYBACK.log`.
+
+The owner requested a further increase to an 80% digital cap. That diagnostics
+image flashed with all component hashes verified and NVS matched byte-for-byte.
+The first five-second `tone loud` accepted 81,280 frames, PCM16 peak 19,244 and
+zero TX errors; the owner initially reported no sound. On the requested repeat,
+the same waveform added 81,280 frames (162,560 cumulative), with matching L/R
+words `0xddb20000` (PCM16 -8782) and zero TX errors. The owner reported **"Clear
+tone"**. Audible tone output is now **PASS** in the current reported 3V3-powered
+wiring, with SD/GAIN left open. Electrical supply/bias/continuity remain unmeasured.
+The old attenuation was a confirmed contributor to insufficient test level;
+this does not establish it as the sole cause of every earlier silent trial.
+The owner subsequently approved applying the higher gain to normal voice
+playback and testing microphone/Opus replay. No SD resistor trial was performed.
 
 Both five-second recordings exported 80,000 frames with valid CRC32 and no RX
 errors or active DMA overruns. The initial environment recording had RMS 2459.46,
@@ -343,8 +358,9 @@ short offline tests does not establish prolonged conversation stability.
 | Microphone recording | PASS | Two five-second 80,000-frame exports, valid CRC32, zero RX errors |
 | Speech intelligibility | PASS | Owner heard clear recognizable words in independently played spoken WAV |
 | RX DMA stability | PASS | Zero drops in both five-second captures and Opus capture with diagnostic polling; prolonged conversation not yet verified |
-| Speaker digital output | PASS | Extended tone: 81,280 accepted frames, PCM16 peak 1,924, matching L/R words, zero TX errors; real Opus replay 26,880 frames |
+| Speaker digital output | PASS | Repeated 80% test: 81,280 added frames, PCM16 peak 19,244, matching L/R words, zero TX errors; prior Opus replay 26,880 frames |
 | Amplifier electrical output | NOT YET VERIFIED | Actual VIN, SD/MODE, physical I2S and differential 440 Hz measurements missing |
-| Audible speaker output | NOT YET VERIFIED | Short tone was silent; extended tone produced a very light buzz, clear tone/speech volume unconfirmed |
+| Audible speaker tone | PASS | Owner heard a clear tone on the repeated five-second test with the 80% digital cap |
+| Audible speech replay | NOT YET VERIFIED | Owner approved higher normal playback gain and the next microphone/Opus replay test |
 | Wi-Fi connectivity | NOT YET VERIFIED | Current diagnostics image intentionally disables network; NVS preserved |
 | Gemini voice conversation | NOT YET VERIFIED | Local backend tests pass; deployed hello, STT, audible reply and next turn required |

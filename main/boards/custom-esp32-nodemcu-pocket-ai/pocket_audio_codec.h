@@ -43,7 +43,7 @@ private:
     static constexpr int kDmaDescriptors = 8;
     bool ready_ = false;
     bool started_ = false;
-    std::atomic<int> safe_volume_{20};
+    std::atomic<int> safe_volume_{80};
     std::atomic<float> mic_gain_{4.0f};
     std::atomic<bool> capture_{false}, playback_{false};
     std::atomic<uint32_t> rms_{0}, peak_{0}, rx_errors_{0}, tx_errors_{0}, overruns_{0};

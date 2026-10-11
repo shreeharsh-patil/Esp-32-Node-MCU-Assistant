@@ -76,6 +76,7 @@ def main():
     parser.add_argument('--port')
     parser.add_argument('--seconds', type=int, default=45)
     parser.add_argument('--reset', action='store_true')
+    parser.add_argument('--volume', type=int, help='Set the speaker volume 0..100 before commands (writes only audio preference)')
     parser.add_argument('--command', action='append', default=[],
                         choices=['diag', 'info', 'colors', 'home', 'mic', 'tone', 'tone-long', 'tone-loud', 'testaudio'])
     parser.add_argument('--output', required=True)
@@ -84,6 +85,8 @@ def main():
     args = parser.parse_args()
     if not 1 <= args.seconds <= 120:
         parser.error('--seconds must be between 1 and 120')
+    if args.volume is not None and not 0 <= args.volume <= 100:
+        parser.error('--volume must be between 0 and 100')
     path = Path(args.output)
     if args.extract_only:
         if not args.wav:
@@ -107,10 +110,17 @@ def main():
             HardReset(port).reset()
         start = time.monotonic()
         sent = 0
+        volume_sent = args.volume is None
         next_command_at = 5
         transport = PcmSerialTransport(port)
         while time.monotonic() - start < args.seconds:
             elapsed = time.monotonic() - start
+            if not volume_sent and elapsed >= 3 and port.baudrate == 115200:
+                command = f'volume {args.volume}'
+                log.write(f'\n# HOST command {command}\n'.encode())
+                port.write((command + '\n').encode())
+                port.flush()
+                volume_sent = True
             if sent < len(args.command) and elapsed >= next_command_at and port.baudrate == 115200:
                 command = args.command[sent].replace('tone-long', 'tone long').replace('tone-loud', 'tone loud')
                 marker = f'\n# HOST command {command}\n'.encode()

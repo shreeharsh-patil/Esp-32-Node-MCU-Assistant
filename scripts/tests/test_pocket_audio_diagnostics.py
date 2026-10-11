@@ -58,7 +58,6 @@ public:
     uint32_t TxPeak() const { return block_peak_; }
     int WriteSamples(const int16_t* data, int samples, float output_gain) {
         assert(playback_.load());
-        if (output_gain > 0.08f) assert(diagnostic_playback_.load());
         if (fail_) return 0;
         block_peak_=0;
         for (int i=0; i<samples; ++i) {
@@ -99,7 +98,12 @@ int main() {
     loud_tone.peak_=0;
     const std::array<int16_t, 4> full_scale={32767,-32768,32767,-32768};
     assert(loud_tone.Write(full_scale.data(), full_scale.size()) == 4);
-    assert(loud_tone.peak_ <= 2621); // Normal playback retains its cap after the loud test.
+    assert(loud_tone.peak_ >= 26000 && loud_tone.peak_ <= 26214);
+    // Restored volume still controls normal playback, including mute.
+    loud_tone.safe_volume_=0;
+    loud_tone.peak_=0;
+    assert(loud_tone.Write(full_scale.data(), full_scale.size()) == 4);
+    assert(loud_tone.peak_ == 0);
     PocketAudioCodec failed;
     failed.fail_=true;
     assert(!failed.DiagnosticTone(false, true));
