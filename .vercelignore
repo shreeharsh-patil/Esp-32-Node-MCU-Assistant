@@ -1,0 +1,6 @@
+.env
+.env.*
+**/.env
+**/.env.*
+.vercel/
+pocket-release/private-backups/
