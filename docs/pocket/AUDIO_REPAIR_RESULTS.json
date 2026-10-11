@@ -443,12 +443,13 @@
     "nvs_preservation": "PASS: all 24576 bytes identical before and after corrected flash",
     "post_flash_boot": "PASS: Wi-Fi connected, WebSocket handshake completed, and device entered Listening",
     "tests": "34 backend tests and 113 host firmware tests pass; conversation firmware built with ESP-IDF 6.1",
-    "live_backend_deployment": "PENDING: owner hosts production from a different Vercel account",
-    "speech_audibility_and_reply_completion": "PENDING owner live test with corrected firmware and deployed backend",
-    "conversation_memory": "IMPLEMENTED IN SOURCE: bounded recent encrypted turns reloaded per device from Neon when dashboard history is enabled; live deployment pending",
-    "current_web_search": "IMPLEMENTED IN SOURCE: optional comma-separated FIRECRAWL_API_KEYS; Live tool calls have a 10-second total search budget; live key and deployment pending",
-    "current_time": "IMPLEMENTED IN SOURCE: direct Live tool returns UTC and India Standard Time without web search; deployment pending",
-    "youtube_on_esp32": "UNSUPPORTED: display cannot run required YouTube player; audio-only extraction is not implemented"
+    "live_backend_deployment": "PASS: production deployment dpl_95M54yvM9ZZy37LTSpBcDX4hWt1a promoted to esp-32-node-mcu-assistant.vercel.app; /health HTTP 200 configured:true",
+    "speech_audibility_and_reply_completion": "PASS for two short live turns: Hello and Open YouTube recognized; full replies clearly audible per owner; state returned to Listening after each; prolonged stability unverified",
+    "live_two_turn_log": "docs/pocket/AUDIO_REPAIR_LIVE_TWO_TURNS.log",
+    "conversation_memory": "DEPLOYED BUT INACTIVE: bounded encrypted per-device history requires missing production DATABASE_URL and SETTINGS_ENCRYPTION_KEY, plus dashboard history enabled",
+    "current_web_search": "DEPLOYED BUT INACTIVE: optional comma-separated FIRECRAWL_API_KEYS absent in production; live search unverified",
+    "current_time": "DEPLOYED BUT UNVERIFIED: direct Live tool returns UTC and India Standard Time without web search",
+    "youtube_on_esp32": "UNSUPPORTED: device lacks browser/video player; YouTube audio separation is prohibited by YouTube API policies"
   },
   "normal_voice_update": {
     "authorization": "Owner selected Apply to voice playback (Recommended) and testing spoken replay",

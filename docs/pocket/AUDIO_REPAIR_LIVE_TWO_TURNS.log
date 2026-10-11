@@ -1,0 +1,18 @@
+I (136576) Application: >> Hello.
+I (136586) StateMachine: State: listening -> speaking
+I (136586) CompanionUI: Status: Speaking...
+I (136586) Application: << Hello! How can I
+I (137056) Application: << help you today?
+I (138916) StateMachine: State: speaking -> listening
+I (138916) CompanionUI: Status: Listening...
+I (148086) SystemInfo: free sram: 103048 minimal sram: 75748
+I (153826) Application: >> Open YouTube.
+I (153926) StateMachine: State: listening -> speaking
+I (153926) CompanionUI: Status: Speaking...
+I (153966) Application: << I cannot play or
+I (154496) Application: << open YouTube videos
+I (155536) Application: <<  on this device.
+I (156516) Application: <<  Is there anything
+I (157346) Application: <<  else I can help you with?
+I (159656) StateMachine: State: speaking -> listening
+I (159666) CompanionUI: Status: Listening...

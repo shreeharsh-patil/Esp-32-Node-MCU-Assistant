@@ -381,21 +381,26 @@ WSS → backend/Gemini → 24 kHz Opus → decoder/resampler → fixed 16 kHz I2
 The application defers automatic capture until playback queues drain, and the
 board reopens idle sessions with bounded retry. The device has joined the
 owner's Wi-Fi and reached Listening through a successful WebSocket handshake.
-The deployed `https://esp-32-node-mcu-assistant.vercel.app/health` returned HTTP
-200 and `configured: true`; that endpoint alone does not prove provider audio.
-One live reply began and was cut by a WebSocket disconnect. Later owner trials
-produced no reply. The revised backend defers timed renewal until the reply
-finishes and sends a short initial audio buffer; it still needs deployment by
-the owner from the Vercel account hosting this URL. The revised conversation
-firmware adds capped speech gain and removes periodic diagnostics logging from
-live conversation. The fresh image was flashed on COM4 with NVS preserved, and
-booted through Wi-Fi and WebSocket to Listening. Speech audibility and a complete
-two-turn conversation with both revisions are still awaiting owner acceptance.
-The pending backend revision also reloads a bounded window of encrypted per-device
-history from Neon and supports current web questions through private, comma-separated
-Firecrawl keys. Neither feature has been verified against the owner's production
-deployment. The ESP32 panel cannot host the YouTube player, so YouTube playback on
-its own display and speaker is outside this hardware's supported capabilities.
+The revised backend was deployed to the owner's Vercel project and promoted to
+`https://esp-32-node-mcu-assistant.vercel.app` (deployment
+`dpl_95M54yvM9ZZy37LTSpBcDX4hWt1a`). Production `/health` returned HTTP 200
+and `configured: true`. The revised conversation firmware adds capped speech
+gain and removes periodic diagnostics logging from live conversation. The fresh
+image was flashed on COM4 with NVS preserved, then booted through Wi-Fi and a
+new WebSocket handshake to Listening. In the 40-second live capture
+`AUDIO_REPAIR_LIVE_TWO_TURNS.log`, the device recognized `Hello` and `Open
+YouTube`, played complete spoken replies to both, and returned to Listening
+after each. The owner confirmed both replies were clearly audible. This verifies
+two short live turns; prolonged reliability and the direct time tool remain
+untested. Earlier interrupted and silent replies remain documented above.
+
+The deployed backend can reload bounded encrypted per-device history from Neon
+and search current web information through private, comma-separated Firecrawl
+keys. The owner's production project currently lacks `DATABASE_URL`,
+`SETTINGS_ENCRYPTION_KEY`, and `FIRECRAWL_API_KEYS`; these features remain
+inactive until the owner adds them and redeploys. The ESP32 panel cannot host
+the YouTube player, so YouTube playback on its own display and speaker is
+outside this hardware's supported capabilities.
 
 ## Acceptance report
 
@@ -414,8 +419,8 @@ prolonged conversation stability.
 | Speaker digital output | PASS | Repeated 80% test: 81,280 added frames, PCM16 peak 19,244, matching L/R words, zero TX errors; prior Opus replay 26,880 frames |
 | Amplifier electrical output | NOT YET VERIFIED | Actual VIN, SD/MODE, physical I2S and differential 440 Hz measurements missing |
 | Audible speaker tone | PASS, latest retest | Owner confirmed horn-like tone clearly audible for five seconds after checking joints; earlier faint/silent observations retained |
-| Audible speech replay | NOT YET VERIFIED on latest repeat | Initial volume-80 replay not heard; stronger-input repeat sent 26,880 frames without errors, listening result unconfirmed |
+| Audible speech replay | PASS for two short live replies | Owner heard the complete replies to `Hello` and `Open YouTube` clearly from the ESP32 speaker; `AUDIO_REPAIR_LIVE_TWO_TURNS.log` |
 | Conversation firmware install | PASS | Fixed-AP-key image hashes verified after COM4 flash; 24,576-byte NVS matched before/after |
 | Vercel health | PASS | Production `/health`: HTTP 200, `configured: true` |
 | Wi-Fi connectivity | PASS | Device rejoined the provisioned network after the latest flash and completed its WebSocket handshake |
-| Gemini voice conversation | PARTIAL | One live reply began but its socket closed mid-reply; later prompts yielded no answer; revised backend is not deployed yet |
+| Gemini voice conversation | PASS for two short turns | Revised backend deployed; `Hello` and `Open YouTube` each produced a complete audible reply and returned to Listening. Long-running reliability remains unverified |
