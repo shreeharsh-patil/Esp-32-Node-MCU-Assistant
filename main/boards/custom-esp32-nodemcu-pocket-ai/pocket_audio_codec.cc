@@ -171,6 +171,10 @@ int PocketAudioCodec::ReadCaptured(int16_t* dest, int samples) {
 }
 
 int PocketAudioCodec::Write(const int16_t* data, int samples) {
+    return WriteSamples(data, samples, 0.08f);
+}
+
+int PocketAudioCodec::WriteSamples(const int16_t* data, int samples, float output_gain) {
     std::lock_guard<std::mutex> lock(output_mutex_);
     if (!ready_ || !playback_.load())
         return 0;
@@ -183,8 +187,9 @@ int PocketAudioCodec::Write(const int16_t* data, int samples) {
         for (int i = 0; i < frames; ++i) {
             const int64_t sample = data[done + i];
             squares += sample * sample;
-            const int32_t word = pocket::ConvertSpeaker(data[done + i], speaker_previous_,
-                                                        speaker_filtered_, safe_volume_.load());
+            const int32_t word =
+                pocket::ConvertSpeaker(data[done + i], speaker_previous_, speaker_filtered_,
+                                       safe_volume_.load(), output_gain);
             tx_words_[i * 2] = tx_words_[i * 2 + 1] = word;
             const int64_t pcm = word / 65536;
             tx_squares += pcm * pcm;
@@ -215,12 +220,14 @@ uint32_t PocketAudioCodec::PlaybackRms() const {
     return playback_rms_.load();
 }
 
-bool PocketAudioCodec::DiagnosticTone(bool extended) {
+bool PocketAudioCodec::DiagnosticTone(bool extended, bool loud) {
     PrintSignalExpectations();
-    const int duration_ms = extended ? 5000 : 300;
-    const int source_peak = extended ? 24000 : 6000;
+    const bool long_tone = extended || loud;
+    const int duration_ms = long_tone ? 5000 : 300;
+    const int source_peak = long_tone ? 24000 : 6000;
+    const float output_gain = loud ? 0.80f : 0.08f;
     const int total_frames = duration_ms * 16;
-    const int saved_volume = safe_volume_.exchange(extended ? 100 : 50);
+    const int saved_volume = safe_volume_.exchange(long_tone ? 100 : 50);
     const bool saved_output = playback_.load();
     diagnostic_playback_.store(true);
     speaker_previous_ = speaker_filtered_ = 0;
@@ -229,8 +236,8 @@ bool PocketAudioCodec::DiagnosticTone(bool extended) {
     bool ok = ready_;
     uint32_t peak = 0;
     int32_t example_left = 0, example_right = 0;
-    ESP_LOGI(TAG, "TONE starting 440Hz %dms; temporary volume=%d; output cap applies", duration_ms,
-             safe_volume_.load());
+    ESP_LOGI(TAG, "TONE starting 440Hz %dms; temporary volume=%d; digital cap=%d%%", duration_ms,
+             safe_volume_.load(), loud ? 80 : 8);
     for (int block = 0; block < total_frames / 160 && ok; ++block) {
         for (int i = 0; i < 160; ++i) {
             const int n = block * 160 + i;
@@ -238,7 +245,8 @@ bool PocketAudioCodec::DiagnosticTone(bool extended) {
             samples[i] =
                 static_cast<int16_t>(source_peak * ramp * std::sin(n * 6.2831853f * 440 / 16000));
         }
-        ok = Write(samples.data(), samples.size()) == static_cast<int>(samples.size());
+        ok = WriteSamples(samples.data(), samples.size(), output_gain) ==
+             static_cast<int>(samples.size());
         peak = std::max(peak, TxPeak());
         if (block == 1 && ok) {
             example_left = tx_words_[0];
@@ -248,7 +256,8 @@ bool PocketAudioCodec::DiagnosticTone(bool extended) {
     // Push a full DMA ring of silence so the queued tone leaves the wire before return.
     samples.fill(0);
     for (int i = 0; i < kDmaDescriptors && ok; ++i)
-        ok = Write(samples.data(), samples.size()) == static_cast<int>(samples.size());
+        ok = WriteSamples(samples.data(), samples.size(), output_gain) ==
+             static_cast<int>(samples.size());
     ESP_LOGI(TAG, "TONE 440Hz %dms fixed diagnostic gain; TX PCM16 peak=%lu (after gain)",
              duration_ms, peak);
     ESP_LOGI(TAG, "TONE example TX L=0x%08lx R=0x%08lx signed_pcm16=%ld",

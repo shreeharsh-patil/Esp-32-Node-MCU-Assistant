@@ -7,17 +7,18 @@
   "credentials_erased": false,
   "build_source_sha256": {
     "main/audio/audio_service.cc": "2f088b4bc31c05275f0bf8bc6bdd5944828180ef23352eadd9e9cf7d439857b7",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "035f631293c0580c750af7fa5a40073b0b46b153b5af94b8eecc95db70805057",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "c737ceb4f940a051a79158ae71570675fd60e488062d56a34aa9dfbf5d51a854",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_board.cc": "d35348333d4fd27f360207abf1a9fbb47a39ada3a3edba75d330f727348aae13",
-    "scripts/pocket_serial_capture.py": "15eb2441151d57a8bbcbcb60c754556f45264ce135076a42e5635f62afef77d5"
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "382f93e6c716aec209187fc97bd551f624464993bad2c365f37eb49f82cc9406",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "d8bf0e84cfc07f7fd134f5a9a0e5d04cc26a2c57fd5d2d69e67aeee01ca105b7",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_board.cc": "5a1a506a5921d3dec53145078fa7b115162c51958d990c1aabbe889eefb44d1e",
+    "scripts/pocket_serial_capture.py": "12f65069e23c5908e116097626e3eacff6735068ec992ae0a7765288e3bf4815",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "896eeadb7e24b6aa61ed6e8908dc3d2e0fd40a9b367e7357d1506f8bad562c1b"
   },
   "validation": {
     "host_tests": {
       "result": "PASS",
       "tests": 113,
       "skipped": 0,
-      "log": "pocket-audio-long-tone-host-tests.log",
+      "log": "pocket-audio-80-host-tests.log",
       "runner": "scripts/pocket_host_tests.py (Windows portable runner, UTF-8)"
     },
     "backend_tests": {
@@ -37,10 +38,10 @@
       "diagnostics": {
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32-diagnostics.bin",
-        "bytes": 2229680,
-        "sha256": "bb1b9e2742f009580d2b76153d0731953ce775a0915daaa9b7e359d59249060e",
+        "bytes": 2229840,
+        "sha256": "9fe5886715702764bbb447a28f56e1d77f8d062f8443c6b76d9a25aa93a367a0",
         "idf": "v6.1",
-        "app_bytes": 2164144,
+        "app_bytes": 2164304,
         "factory_partition_bytes": 4128768,
         "physical_acceptance": "NOT YET VERIFIED",
         "components": {
@@ -53,19 +54,19 @@
             "sha256": "c9a826e85500d14d1854ce78e47452d4614a1be371bbd056278d2cb3398fbbfd"
           },
           "diagnostics/xiaozhi.bin": {
-            "bytes": 2164144,
-            "sha256": "b2534d25dec5731cc93cd47229d005b5a62704d579306d7336259c9fdbfdf3a3"
+            "bytes": 2164304,
+            "sha256": "399ed7f8001032c59c6d8f8c78f08eec376f55625aaf42d8fa32cd35374a72fb"
           }
         },
-        "log": "pocket-audio-long-tone-build-diagnostics.log"
+        "log": "pocket-audio-80-build-diagnostics.log"
       },
       "conversation": {
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32.bin",
-        "bytes": 2244960,
-        "sha256": "1c042f336708eb3e0cd66842d3fe362fca4bf741351532d0f6ae21e857f18f1d",
+        "bytes": 2245120,
+        "sha256": "5a46138f1fc76f6c6479c4ae4ccaea4d8293ae7ba95d0dd6c4560567f89724a6",
         "idf": "v6.1",
-        "app_bytes": 2179424,
+        "app_bytes": 2179584,
         "factory_partition_bytes": 4128768,
         "physical_acceptance": "NOT YET VERIFIED",
         "components": {
@@ -78,11 +79,11 @@
             "sha256": "c9a826e85500d14d1854ce78e47452d4614a1be371bbd056278d2cb3398fbbfd"
           },
           "conversation/xiaozhi.bin": {
-            "bytes": 2179424,
-            "sha256": "7739ee5404bf850aad04edd54bd3831848bde949481c9873e726c51dce53365d"
+            "bytes": 2179584,
+            "sha256": "284f98dc708b045ea10b00ae15e5021144bf2b247676a2640d2586e0bf1f1868"
           }
         },
-        "log": "pocket-audio-long-tone-build-conversation.log"
+        "log": "pocket-audio-80-build-conversation.log"
       }
     }
   },
@@ -321,7 +322,8 @@
     "logs": [
       "docs/pocket/AUDIO_REPAIR_LONG_TONE_FLASH.log",
       "docs/pocket/AUDIO_REPAIR_LONG_TONE_PLAYBACK.log"
-    ]
+    ],
+    "firmware_sha256": "bb1b9e2742f009580d2b76153d0731953ce775a0915daaa9b7e359d59249060e"
   },
   "amplifier_3v3_power_trial": {
     "reported_power_source": "ESP32 3V3 after VIN removal; unmeasured",
@@ -338,5 +340,21 @@
       "owner_observation": "Owner requested increased volume/duration; listening result not supplied"
     },
     "log": "docs/pocket/AUDIO_REPAIR_3V3_POWER_TONE.log"
+  },
+  "loud_tone_update": {
+    "owner_request": "Make the speaker loud; make it 80",
+    "command": "tone loud",
+    "capture_argument": "--command tone-loud",
+    "digital_gain_and_cap_percent": 80,
+    "normal_playback_cap_percent": 8,
+    "duration_ms": 5000,
+    "frequency_hz": 440,
+    "source_pcm16_peak": 24000,
+    "approximate_post_gain_pcm16_peak": 19240,
+    "amplitude_ratio_to_prior_long_tone": 10,
+    "total_frames": 81280,
+    "flashed": false,
+    "physical_acceptance": "NOT YET VERIFIED",
+    "firmware_sha256": "9fe5886715702764bbb447a28f56e1d77f8d062f8443c6b76d9a25aa93a367a0"
   }
 }

@@ -330,13 +330,15 @@ private:
             StartTalk();
             test_until_ = esp_timer_get_time() + 1700000;
             ESP_LOGI(TAG, "TEST E/H recording real mic through upstream Opus loopback");
-        } else if (strcmp(command, "tone") == 0 || strcmp(command, "tone long") == 0) {
+        } else if (strcmp(command, "tone") == 0 || strcmp(command, "tone long") == 0 ||
+                   strcmp(command, "tone loud") == 0) {
             if (app.GetDeviceState() != kDeviceStateWifiConfiguring ||
                 !app.GetAudioService().IsIdle() || pressed_) {
                 ESP_LOGW(TAG, "Tone requires idle Wi-Fi setup mode");
                 return;
             }
-            const bool ok = audio_.DiagnosticTone(strcmp(command, "tone long") == 0);
+            const bool ok = audio_.DiagnosticTone(strcmp(command, "tone long") == 0,
+                                                  strcmp(command, "tone loud") == 0);
             ESP_LOGI(TAG, "TEST F digital I2S tone transfer %s; audible/power check PENDING",
                      ok ? "PASS" : "FAIL");
         } else if (strcmp(command, "factory-reset CONFIRM") == 0) {
@@ -349,7 +351,7 @@ private:
             ESP_LOGI(TAG,
                      "Commands: handsfree on/off start stop cancel setup diag info colors home "
                      "face NAME mic "
-                     "testaudio tone [long] "
+                     "testaudio tone [long/loud] "
                      "volume N "
                      "wifi-reset CONFIRM factory-reset CONFIRM");
     }

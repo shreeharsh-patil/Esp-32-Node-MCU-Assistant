@@ -51,20 +51,22 @@ public:
     static constexpr int kDmaDescriptors=8;
     std::array<int32_t, 320> tx_words_{};
     uint32_t frames_=0, peak_=0, block_peak_=0;
-    bool DiagnosticTone(bool extended=false);
+    bool DiagnosticTone(bool extended=false, bool loud=false);
+    int Write(const int16_t* data, int samples);
     void PrintSignalExpectations() {}
     void EnableOutput(bool enabled) { playback_.store(enabled); }
     uint32_t TxPeak() const { return block_peak_; }
-    int Write(const int16_t* data, int samples) {
-        assert(diagnostic_playback_.load() && playback_.load());
+    int WriteSamples(const int16_t* data, int samples, float output_gain) {
+        assert(playback_.load());
+        if (output_gain > 0.08f) assert(diagnostic_playback_.load());
         if (fail_) return 0;
         block_peak_=0;
         for (int i=0; i<samples; ++i) {
             const int32_t word=pocket::ConvertSpeaker(data[i], speaker_previous_,
-                                                     speaker_filtered_, safe_volume_.load());
+                                                     speaker_filtered_, safe_volume_.load(), output_gain);
             tx_words_[i*2]=tx_words_[i*2+1]=word;
             const auto peak=static_cast<uint32_t>(std::abs(word / 65536));
-            assert(peak <= 2621);
+            assert(peak <= static_cast<uint32_t>(output_gain * 32767));
             block_peak_=std::max(block_peak_, peak);
         }
         peak_=std::max(peak_, block_peak_);
@@ -86,15 +88,29 @@ int main() {
     assert(long_tone.frames_ == 81280 && long_tone.peak_ >= 1800 && long_tone.peak_ <= 2000);
     assert(long_tone.peak_ > 14 * short_tone.peak_);
     assert(long_tone.safe_volume_ == 37 && long_tone.playback_ && !long_tone.diagnostic_playback_);
+    PocketAudioCodec loud_tone;
+    loud_tone.safe_volume_=59;
+    assert(loud_tone.DiagnosticTone(false, true));
+    assert(loud_tone.frames_ == 81280 && loud_tone.peak_ >= 19200 && loud_tone.peak_ <= 19400);
+    assert(loud_tone.peak_ >= 9.9 * long_tone.peak_);
+    assert(loud_tone.safe_volume_ == 59 && !loud_tone.playback_ && !loud_tone.diagnostic_playback_);
+    loud_tone.safe_volume_=100;
+    loud_tone.playback_=true;
+    loud_tone.peak_=0;
+    const std::array<int16_t, 4> full_scale={32767,-32768,32767,-32768};
+    assert(loud_tone.Write(full_scale.data(), full_scale.size()) == 4);
+    assert(loud_tone.peak_ <= 2621); // Normal playback retains its cap after the loud test.
     PocketAudioCodec failed;
     failed.fail_=true;
-    assert(!failed.DiagnosticTone(true));
+    assert(!failed.DiagnosticTone(false, true));
     assert(failed.safe_volume_ == 20 && !failed.playback_ && !failed.diagnostic_playback_);
 }
 '''
         with tempfile.TemporaryDirectory() as directory:
             cpp, exe = Path(directory) / 'tone.cpp', Path(directory) / 'tone.exe'
-            cpp.write_text(fixture + source[start:end] + checks)
+            write_start = source.index('int PocketAudioCodec::Write(')
+            write_end = source.index('\nint PocketAudioCodec::WriteSamples(', write_start)
+            cpp.write_text(fixture + source[write_start:write_end] + source[start:end] + checks)
             subprocess.run([compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror',
                             '-I', str(ROOT / 'main/boards/custom-esp32-nodemcu-pocket-ai'),
                             str(cpp), '-o', str(exe)], check=True)

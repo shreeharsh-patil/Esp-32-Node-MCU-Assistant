@@ -60,7 +60,7 @@ Optional PTT uses a 35 ms debounce, a 2.5-second startup delay, and requires a r
 button before arming. GPIO0 is never driven. Release BOOT before power-on/reset
 and while flashing. Maximum button/serial listening duration is 30 seconds.
 
-The output starts at 20% of a quadratic software volume control. An absolute
+Normal output starts at 20% of a quadratic software volume control. An absolute
 8% full-scale peak cap applies at every requested volume, including MCP requests
 for 100%. This is a digital limit, not a measured speaker wattage guarantee.
 There is no automatic test tone at boot.
@@ -70,6 +70,12 @@ temporary low gain, then restores the saved volume. `tone long` plays for five
 seconds with approximately 16 times the PCM amplitude, still through the same
 absolute output cap. Both tests restore volume without writing settings.
 The capture utility accepts `--command tone-long` for the extended test.
+The owner-requested `tone loud` uses an 80% digital gain/cap for five seconds,
+approximately ten times the sample amplitude of `tone long`. The waveform peaks
+around 59% of PCM full scale; the 80% cap is not a measured loudness percentage.
+Only this explicit idle diagnostic uses the higher gain; normal playback keeps
+its 8% cap. There is no persistent volume change or automatic loud tone.
+Use `--command tone-loud` with the capture utility.
 `mic` measures five seconds
 of capture; the serial utility can export PCM to WAV using a temporary
 921600-baud handshake and 512 B scratch buffer. The normal console returns to

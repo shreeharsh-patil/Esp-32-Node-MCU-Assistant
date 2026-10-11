@@ -28,7 +28,7 @@ public:
     // PCM accepted by I2S, before safety gain. Not an acoustic measurement.
     uint32_t PlaybackRms() const;
     // Called by the board control task only while upstream playback is idle.
-    bool DiagnosticTone(bool extended = false);
+    bool DiagnosticTone(bool extended = false, bool loud = false);
     // Idle service only; bounded PCM stream with temporary high-speed UART and host ACK.
     bool DiagnosticRecord();
     void PrintSignalExpectations() const;
@@ -57,5 +57,6 @@ private:
     float mic_dc_ = 0, speaker_previous_ = 0, speaker_filtered_ = 0;
     std::mutex output_mutex_;
     std::mutex input_mutex_;
+    int WriteSamples(const int16_t* data, int samples, float output_gain);
     int ReadCaptured(int16_t* dest, int samples);
 };

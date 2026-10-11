@@ -48,6 +48,12 @@ int main() {
     }
     float previous = 0, filtered = 0;
     assert(pocket::ConvertSpeaker(INT16_MAX, previous, filtered, 0) == 0);
+    // Explicit diagnostic gain remains bounded even if a caller supplies too much.
+    previous = filtered = 0;
+    const int64_t loud = pocket::ConvertSpeaker(INT16_MAX, previous, filtered, 100, 5.0f);
+    assert(loud > static_cast<int64_t>(26000) * 65536);
+    assert(loud <= static_cast<int64_t>(26214) * 65536);
+    assert(loud % 65536 == 0);
     for (int volume : {-100, 0, 20, 100, 1000}) {
         previous = filtered = 0;
         for (int i = 0; i < 10000; ++i) {

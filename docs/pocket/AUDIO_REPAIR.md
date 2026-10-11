@@ -48,6 +48,13 @@ repair; no credential erase was performed.
    absolute cap, taper, trailing silence and restoration of volume/output state.
    The owner approved installation and heard a very light buzz from the extended
    test. Clear tone reproduction remains **NOT YET VERIFIED**.
+   After the faint buzz, the owner requested a louder test and specified 80%.
+   `tone loud` uses an 80% digital gain/cap for five seconds, approximately
+   19,240 PCM16 peak counts with the same 24,000-count source waveform. This is
+   about ten times the sample amplitude of `tone long`. Only the explicit idle
+   test uses the higher gain; normal playback remains limited to 8%. The 80%
+   limit is not an acoustic loudness percentage. Installation and listening
+   acceptance of this new test are **NOT YET VERIFIED**.
 6. **Independent microphone recording:** `mic` captures five seconds of 16 kHz
    mono PCM16 after left-slot conversion, DC removal and configured gain. RMS,
    peak, clipping percentage, captured frame count and error/overrun deltas
@@ -224,7 +231,7 @@ Final validation: **PASS**, 113 host tests (including the extended tone);
 **PASS**, both Pocket variants and the representative `bread-compact-esp32-lcd`
 build with ESP-IDF v6.1. Image inspection verified classic ESP32 chip headers,
 boot/app checksums, partition bounds and the 4 MB/no-PSRAM configuration. The
-diagnostics merged image is 2,229,680 bytes; conversation is 2,244,960 bytes.
+diagnostics merged image is 2,229,840 bytes; conversation is 2,245,120 bytes.
 Their app images fit the 0x3f0000 factory partition. Local checksum verification
 is separate from installation and uses no serial access. Short offline PCM
 export, clear microphone speech and heap/stack checks passed after installation;
@@ -258,6 +265,13 @@ diagnostics firmware with explicit approval:
 
 ```powershell
 python scripts/pocket_serial_capture.py --port COM4 --seconds 18 --command tone-long --command diag --output docs/pocket/audio-long-tone.log
+```
+
+For the subsequently requested 80% digital-limit test, use the updated image
+and `tone loud` (the prior short and long commands retain their original levels):
+
+```powershell
+python scripts/pocket_serial_capture.py --port COM4 --seconds 18 --command tone-loud --command diag --output docs/pocket/audio-80-tone.log
 ```
 
 After local hardware acceptance and approval to install conversation firmware:
