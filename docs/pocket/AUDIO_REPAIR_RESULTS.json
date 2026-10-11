@@ -129,14 +129,15 @@
     "physical_i2s_clocks_and_data": "NOT YET VERIFIED",
     "differential_amplifier_audio": "NOT YET VERIFIED",
     "speaker_continuity": "NOT YET VERIFIED",
-    "repaired_audible_output": "PASS",
+    "repaired_audible_output": "PASS for latest tone: owner confirmed clearly audible for five seconds after checking joints; historical faint/silent trials retained",
+    "normal_voice_audible_replay": "FAIL: No speech heard at volume 80",
     "wifi_connection": "NOT YET VERIFIED",
     "gemini_conversation_and_resume": "NOT YET VERIFIED",
     "runtime_heap_and_stack_margins": "NOT YET VERIFIED",
     "offline_runtime_heap_and_stack_short_runs": "PASS",
     "prolonged_conversation_dma_stability": "NOT YET VERIFIED"
   },
-  "speaker_root_cause": "Software attenuation was a confirmed contributor to insufficient test level. The repeated five-second test with 80% digital gain/cap produced a clear tone reported by the owner, with PCM16 peak 19244 and zero TX errors. Earlier tests were silent or faint. This does not establish attenuation as the sole cause of every earlier silent trial. Actual electrical supply, SD bias and continuity remain unmeasured. Normal voice playback was still limited to 8%; the owner approved applying the higher gain and testing spoken replay.",
+  "speaker_root_cause": "Software attenuation contributed to insufficient test level. The owner confirmed a clear five-second tone with 80% digital gain/cap, PCM16 peak 19244 and zero TX errors, including the latest joint-check retest. Earlier silent/faint trials remain unexplained; supply, SD bias and continuity are unmeasured. The owner-approved higher normal gain is now installed and runtime volume is 80. Initial spoken replay was not heard; latest stronger-input replay listening result remains unconfirmed as the owner requested moving to a hosted backend test.",
   "microphone_root_cause": "Confirmed diagnostic queue-mutex blocking and stale idle DMA corrected. Repaired offline image exported two complete five-second recordings with valid CRC32 and zero active DMA drops/read errors. Owner confirmed clear recognizable words from computer WAV playback. Prolonged Wi-Fi/Gemini capture stability remains unverified.",
   "exact_amplifier": {
     "vendor": "SmartElex",
@@ -403,8 +404,63 @@
     "requested_runtime_volume": 80,
     "quiet_tones_gain_and_cap_percent": 8,
     "saved_preferences_retained": true,
-    "flashed": false,
-    "speech_playback": "NOT YET VERIFIED",
+    "flashed": true,
+    "component_flash_hashes_verified": true,
+    "nvs_preservation_across_flash": "PASS: 24576 bytes matched before and after flash",
+    "preference_update_after_flash": "Only audio/output_volume intentionally set to 80; firmware log confirmed",
+    "speech_playback": "NOT YET VERIFIED on latest repeat; initial replay FAIL: No speech heard",
+    "digital_speech_replay": {
+      "captured_frames": 27840,
+      "playback_frames": 26880,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_dma_drops": 0,
+      "last_block_tx_pcm16_rms": 513,
+      "last_block_tx_pcm16_peak": 1081,
+      "remaining_test_packets": 1,
+      "limitation": "Last-block levels are not recording-wide peak; a late test packet blocked the subsequent idle-only tone command"
+    },
+    "logs": [
+      "docs/pocket/AUDIO_REPAIR_VOICE80_FLASH.log",
+      "docs/pocket/AUDIO_REPAIR_VOICE80_VOLUME.log",
+      "docs/pocket/AUDIO_REPAIR_VOICE80_REPLAY.log",
+      "docs/pocket/AUDIO_REPAIR_VOICE80_TONE_CONTROL.log"
+    ],
+    "tone_control_after_restart": {
+      "frames": 81280,
+      "post_gain_pcm16_peak": 19244,
+      "tx_errors": 0,
+      "owner_observation": "Faint buzz or click",
+      "log": "docs/pocket/AUDIO_REPAIR_VOICE80_TONE_CONTROL_RESET.log"
+    },
+    "connection_check": "Owner unplugged USB and reported speaker/power/GND joints firm and ready",
+    "tone_after_connection_check": {
+      "added_frames": 81280,
+      "post_gain_pcm16_peak": 19244,
+      "tx_errors": 0,
+      "owner_observation": "Horn-like sound, clearly audible for five seconds",
+      "log": "docs/pocket/AUDIO_REPAIR_VOICE80_TONE_JOINT_RETEST.log"
+    },
+    "close_mic_trial": {
+      "result": "INVALID for spoken acceptance: owner did not speak and requested repeat",
+      "captured_frames": 27840,
+      "playback_frames": 26880,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_dma_drops": 0,
+      "log": "docs/pocket/AUDIO_REPAIR_VOICE80_REPLAY_CLOSE.log"
+    },
+    "spoken_repeat": {
+      "captured_frames": 27840,
+      "playback_frames": 26880,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_dma_drops": 0,
+      "last_block_tx_pcm16_rms": 1218,
+      "last_block_tx_pcm16_peak": 2807,
+      "audible_acceptance": "NOT YET VERIFIED: owner requested moving to hosted backend test",
+      "log": "docs/pocket/AUDIO_REPAIR_VOICE80_REPLAY_READY_REPEAT.log"
+    },
     "firmware_sha256": "03d6c8f723cdbbee1932680580a5f826efd746f7abb4e4fb8c7901106b58a4f8"
   }
 }

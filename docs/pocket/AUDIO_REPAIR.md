@@ -89,7 +89,7 @@ verified):
 |---|---|
 | INMP441 VDD; GND; L/R | 3V3; common GND; GND |
 | INMP441 SCK / WS / SD | 26 / 25 / 34 |
-| MAX98357A VIN; GND | VIN/5V source (actual voltage unmeasured); common GND |
+| MAX98357A power input; GND | Initially ESP32 VIN, later owner-reported 3V3; actual voltage unmeasured; common GND |
 | MAX98357A BCLK / LRCLK / DIN | 26 / 25 / 22 |
 | MAX98357A GAIN / SD_MODE | GAIN initially open; SD_MODE requires verified module bias |
 | Speaker | SPK+ / SPK−; neither terminal grounded |
@@ -100,12 +100,15 @@ verified):
 TX configuration is already Philips I2S, 32-bit stereo, both slots carrying
 identical signed mono PCM. One paired I2S0 master drives GPIO26/25 at
 1.024 MHz/16 kHz. GPIO34 receives mic data; GPIO22 transmits amplifier data.
-Display GPIO18/23/13/27/14 and BOOT GPIO0 do not conflict. The normal output
-gain is quadratic: volume 20 multiplies PCM by 0.0032, volume 50 by 0.02.
-The old 6000-count tone therefore had only about 19/120 counts peak after gain;
-digital frame counts alone never established audible output. The new tone is
-still deliberately quiet. Neither amplifier enable nor speaker power is
-controlled/measured by a firmware GPIO.
+Display GPIO18/23/13/27/14 and BOOT GPIO0 do not conflict. With the original
+8% output gain, quadratic volume scaling multiplied PCM by 0.0032 at volume
+20 and 0.02 at volume 50. The old 6000-count tone therefore had only about
+19/120 counts peak after gain; digital frame counts alone never established
+audible output. The owner-approved normal 80% output gain now gives factors
+of 0.032, 0.2 and 0.512 at volumes 20, 50 and 80 respectively. The short
+`tone` remains deliberately quiet; the owner heard a clear repeated `tone loud`.
+Neither amplifier enable nor speaker power is controlled/measured by a firmware
+GPIO.
 
 ## Device evidence and remaining electrical issue
 
@@ -198,6 +201,33 @@ The old attenuation was a confirmed contributor to insufficient test level;
 this does not establish it as the sole cause of every earlier silent trial.
 The owner subsequently approved applying the higher gain to normal voice
 playback and testing microphone/Opus replay. No SD resistor trial was performed.
+
+The higher normal gain image subsequently flashed with all component hashes
+verified. The 24,576-byte NVS backup matched after the flash; then the requested
+`volume 80` intentionally changed only the audio volume preference. Spoken
+Opus replay captured 27,840 frames and played 26,880, with zero RX/TX errors and
+active DMA drops. Its last output block had RMS 513 and peak 1081; these are
+not recording-wide measurements. The owner reported **"No speech heard"**.
+One late packet remained in the test queue and blocked the subsequent idle-only
+tone command. After restart, `tone loud` again accepted 81,280 frames with
+peak 19,244 and zero TX errors, but the owner reported **"Faint buzz or click"**.
+The earlier clear tone is retained as a historical observation; consistent
+speaker output and intelligible speech are not established. Supply and
+connection checks remain necessary before attributing this variation to
+firmware gain. The owner checked the unplugged speaker/power/GND joints and
+reported them firm before another retest.
+That retest added another 81,280 frames with peak 19,244 and zero TX errors.
+The owner described a horn-like sound, then confirmed it was **clearly audible
+for five seconds**. The latest tone therefore passes acoustic acceptance;
+the earlier faint/silent observations remain in the record. A closer-microphone
+speech replay follows to distinguish quiet input from speaker-path failure.
+The first closer-microphone trial is invalid for speech acceptance because the
+owner did not speak. A requested repeat, with continuous speech instructed
+before capture, recorded 27,840 frames and replayed 26,880 with zero RX/TX errors
+and active drops. Last-block output RMS/peak increased to 1218/2807. Its audible
+result is unconfirmed; the owner requested moving to a Vercel-hosted backend
+test before answering the listening question. Backend syntax and all 30 tests
+passed again, and the prepared conversation image passed checksum verification.
 
 Both five-second recordings exported 80,000 frames with valid CRC32 and no RX
 errors or active DMA overruns. The initial environment recording had RMS 2459.46,
@@ -360,7 +390,7 @@ short offline tests does not establish prolonged conversation stability.
 | RX DMA stability | PASS | Zero drops in both five-second captures and Opus capture with diagnostic polling; prolonged conversation not yet verified |
 | Speaker digital output | PASS | Repeated 80% test: 81,280 added frames, PCM16 peak 19,244, matching L/R words, zero TX errors; prior Opus replay 26,880 frames |
 | Amplifier electrical output | NOT YET VERIFIED | Actual VIN, SD/MODE, physical I2S and differential 440 Hz measurements missing |
-| Audible speaker tone | PASS | Owner heard a clear tone on the repeated five-second test with the 80% digital cap |
-| Audible speech replay | NOT YET VERIFIED | Owner approved higher normal playback gain and the next microphone/Opus replay test |
+| Audible speaker tone | PASS, latest retest | Owner confirmed horn-like tone clearly audible for five seconds after checking joints; earlier faint/silent observations retained |
+| Audible speech replay | NOT YET VERIFIED on latest repeat | Initial volume-80 replay not heard; stronger-input repeat sent 26,880 frames without errors, listening result unconfirmed |
 | Wi-Fi connectivity | NOT YET VERIFIED | Current diagnostics image intentionally disables network; NVS preserved |
 | Gemini voice conversation | NOT YET VERIFIED | Local backend tests pass; deployed hello, STT, audible reply and next turn required |
