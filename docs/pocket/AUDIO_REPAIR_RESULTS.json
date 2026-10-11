@@ -128,14 +128,14 @@
     "physical_i2s_clocks_and_data": "NOT YET VERIFIED",
     "differential_amplifier_audio": "NOT YET VERIFIED",
     "speaker_continuity": "NOT YET VERIFIED",
-    "repaired_audible_output": "FAIL",
+    "repaired_audible_output": "NOT YET VERIFIED",
     "wifi_connection": "NOT YET VERIFIED",
     "gemini_conversation_and_resume": "NOT YET VERIFIED",
     "runtime_heap_and_stack_margins": "NOT YET VERIFIED",
     "offline_runtime_heap_and_stack_short_runs": "PASS",
     "prolonged_conversation_dma_stability": "NOT YET VERIFIED"
   },
-  "speaker_root_cause": "Unresolved: repaired quiet tone contains nonzero matching slots and successful driver transfers, but owner reports no sound. VIN/SD bias, amplifier-side I2S, solder continuity and differential output require physical checks. Intended VIN and differential speaker connections confirmed by owner, not measured.",
+  "speaker_root_cause": "Unresolved: quiet tone was inaudible. Owner reports a very light buzz with approximately 16 times the sample amplitude and five-second duration, with amplifier power instructed to ESP32 3V3. Clear tone reproduction and useful speech volume remain unconfirmed. Actual supply/SD bias, amplifier-side clocks/data and speaker continuity remain unmeasured.",
   "microphone_root_cause": "Confirmed diagnostic queue-mutex blocking and stale idle DMA corrected. Repaired offline image exported two complete five-second recordings with valid CRC32 and zero active DMA drops/read errors. Owner confirmed clear recognizable words from computer WAV playback. Prolonged Wi-Fi/Gemini capture stability remains unverified.",
   "exact_amplifier": {
     "vendor": "SmartElex",
@@ -292,8 +292,36 @@
       "diagnostics",
       "conversation"
     ],
-    "flashed": false,
-    "physical_acceptance": "NOT YET VERIFIED: requires explicit approval to flash updated diagnostics"
+    "flashed": true,
+    "authorization": "Owner requested start the 5 sec thing after being told the new test required installing updated diagnostics",
+    "component_flash_hashes_verified": true,
+    "nvs_preservation": {
+      "result": "PASS",
+      "bytes": 24576,
+      "before_after_match": "Byte-for-byte",
+      "backups": "Private local ignored backups"
+    },
+    "digital_playback": {
+      "result": "PASS",
+      "duration_ms": 5000,
+      "frames": 81280,
+      "post_gain_pcm16_peak": 1924,
+      "left_word": "0xfc920000",
+      "right_word": "0xfc920000",
+      "example_pcm16": -878,
+      "tx_errors": 0
+    },
+    "audible_playback": {
+      "result": "NOT YET VERIFIED",
+      "owner_observation": "A buzz sound but it was very light",
+      "some_sound_reported": true,
+      "clear_tone_and_speech_volume_confirmed": false
+    },
+    "physical_acceptance": "NOT YET VERIFIED: very light buzz reported; clear tone and useful speech volume not established",
+    "logs": [
+      "docs/pocket/AUDIO_REPAIR_LONG_TONE_FLASH.log",
+      "docs/pocket/AUDIO_REPAIR_LONG_TONE_PLAYBACK.log"
+    ]
   },
   "amplifier_3v3_power_trial": {
     "reported_power_source": "ESP32 3V3 after VIN removal; unmeasured",

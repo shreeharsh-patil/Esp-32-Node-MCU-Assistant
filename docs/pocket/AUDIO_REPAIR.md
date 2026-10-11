@@ -46,8 +46,8 @@ repair; no credential erase was performed.
    temporary volume 100 with a 24,000-count source waveform, approximately
    1,920 PCM16 peak counts after gain (16 times the short tone). It retains the
    absolute cap, taper, trailing silence and restoration of volume/output state.
-   The extended test requires approval to install the updated firmware; physical
-   playback is **NOT YET VERIFIED**.
+   The owner approved installation and heard a very light buzz from the extended
+   test. Clear tone reproduction remains **NOT YET VERIFIED**.
 6. **Independent microphone recording:** `mic` captures five seconds of 16 kHz
    mono PCM16 after left-slot conversion, DC removal and configured gain. RMS,
    peak, clipping percentage, captured frame count and error/overrun deltas
@@ -166,6 +166,16 @@ result has not been supplied, so acoustic output for this configuration is
 **NOT YET VERIFIED**. Log: `AUDIO_REPAIR_3V3_POWER_TONE.log`. Neither the supply
 voltage nor the 30-pin clone's USB-to-VIN circuit has been electrically measured.
 The owner requested increased volume and duration after this test.
+
+The owner then requested starting the five-second test. Updated diagnostics
+were flashed with all component hashes verified, and NVS again matched the
+before/after backups byte-for-byte. `tone long` ran for 5,000 ms, accepted
+81,280 frames including trailing silence, reached post-gain PCM16 peak 1,924,
+and logged matching L/R words `0xfc920000` (PCM16 -878), with zero TX errors.
+The owner reported **"little noise kind of sound from speaker"**, clarified as
+**"a buzz sound but it was very light"**. Some sound is now reported; clear
+440 Hz reproduction and useful speech volume remain **NOT YET VERIFIED**.
+Logs: `AUDIO_REPAIR_LONG_TONE_FLASH.log` and `AUDIO_REPAIR_LONG_TONE_PLAYBACK.log`.
 
 Both five-second recordings exported 80,000 frames with valid CRC32 and no RX
 errors or active DMA overruns. The initial environment recording had RMS 2459.46,
@@ -319,8 +329,8 @@ short offline tests does not establish prolonged conversation stability.
 | Microphone recording | PASS | Two five-second 80,000-frame exports, valid CRC32, zero RX errors |
 | Speech intelligibility | PASS | Owner heard clear recognizable words in independently played spoken WAV |
 | RX DMA stability | PASS | Zero drops in both five-second captures and Opus capture with diagnostic polling; prolonged conversation not yet verified |
-| Speaker digital output | PASS | Repaired tone: 6,080 accepted frames, nonzero matching L/R words, zero TX errors; real Opus replay 26,880 frames |
+| Speaker digital output | PASS | Extended tone: 81,280 accepted frames, PCM16 peak 1,924, matching L/R words, zero TX errors; real Opus replay 26,880 frames |
 | Amplifier electrical output | NOT YET VERIFIED | Actual VIN, SD/MODE, physical I2S and differential 440 Hz measurements missing |
-| Audible speaker output | FAIL | Owner heard no repaired-image tone with SD open |
+| Audible speaker output | NOT YET VERIFIED | Short tone was silent; extended tone produced a very light buzz, clear tone/speech volume unconfirmed |
 | Wi-Fi connectivity | NOT YET VERIFIED | Current diagnostics image intentionally disables network; NVS preserved |
 | Gemini voice conversation | NOT YET VERIFIED | Local backend tests pass; deployed hello, STT, audible reply and next turn required |
