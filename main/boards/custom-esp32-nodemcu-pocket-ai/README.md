@@ -98,7 +98,8 @@ speaking mouths use PCM accepted by I2S with a 100 ms stale-sample timeout.
 This is amplitude animation with bounded DMA latency, not phoneme lip sync or
 proof of acoustic playback. See [UI design and validation](../../../docs/pocket/COMPANION_UI.md).
 For Wi-Fi use the conversation build. The `Shreeharsh Assistant` setup hotspot is WPA2
-protected; its key and `http://192.168.4.1` instructions alternate on the screen.
+protected with password `Shreeharsh1757`; its key and `http://192.168.4.1`
+instructions alternate on the screen.
 The form also requires your production HTTPS origin and URL-safe 32-128 character
 device token. Settings are saved after DHCP and NVS readback. Missing backend
 settings open setup on migration while retaining saved Wi-Fi. Provider keys

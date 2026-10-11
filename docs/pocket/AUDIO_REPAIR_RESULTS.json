@@ -11,7 +11,9 @@
     "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "666832f7563ad2ed6e09dfa9d44752062370b1ccd67ad26bf4be408818f8a28e",
     "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_board.cc": "5a1a506a5921d3dec53145078fa7b115162c51958d990c1aabbe889eefb44d1e",
     "scripts/pocket_serial_capture.py": "4c6760287e0c06e5f79daef29032d3d9c7b7678e8cfa0cc8ec5ef3679ae75066",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "3e63b64c2156aeb953570487a6476f1dcd30ad2d1cec35f06a0aa3187280f1de"
+    "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "3e63b64c2156aeb953570487a6476f1dcd30ad2d1cec35f06a0aa3187280f1de",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_wifi.cc": "527981f44a6fbd1755e06fa3e4b626cd64e156568d45f291426c5f49660aed92",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_wifi_policy.h": "aca5fd65778554c3d9b0c0d6ef156896d849aa7a989cdc9da7c281db066fa1dd"
   },
   "validation": {
     "host_tests": {
@@ -39,7 +41,7 @@
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32-diagnostics.bin",
         "bytes": 2229840,
-        "sha256": "03d6c8f723cdbbee1932680580a5f826efd746f7abb4e4fb8c7901106b58a4f8",
+        "sha256": "e83d9ad1421be44f841475a684fd5542d05787bf99f546a64568c98547ddb52d",
         "idf": "v6.1",
         "app_bytes": 2164304,
         "factory_partition_bytes": 4128768,
@@ -55,7 +57,7 @@
           },
           "diagnostics/xiaozhi.bin": {
             "bytes": 2164304,
-            "sha256": "c5173a7df45f072de6ee5a47a411752912c8a6ff640b92e7834d7e7be30e8253"
+            "sha256": "3d10fd0101315320fc8bbad33510308d91a93b2c750c5f6049a3379aa77a7b22"
           }
         },
         "log": "pocket-audio-voice80-build-diagnostics.log"
@@ -63,10 +65,10 @@
       "conversation": {
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32.bin",
-        "bytes": 2245120,
-        "sha256": "ef531d2999d1d085892675e8ae5f3bda254087976c0c7ce8d51d123b21832113",
+        "bytes": 2245104,
+        "sha256": "3b732045e7326b587ae08ff3fa8d56f495044d48aba95d99800225d1ea5704ca",
         "idf": "v6.1",
-        "app_bytes": 2179584,
+        "app_bytes": 2179568,
         "factory_partition_bytes": 4128768,
         "physical_acceptance": "NOT YET VERIFIED",
         "components": {
@@ -79,8 +81,8 @@
             "sha256": "c9a826e85500d14d1854ce78e47452d4614a1be371bbd056278d2cb3398fbbfd"
           },
           "conversation/xiaozhi.bin": {
-            "bytes": 2179584,
-            "sha256": "c352414cd6ac581f990fb83029e30d0243f4d9d7041da2062f708ec964c96322"
+            "bytes": 2179568,
+            "sha256": "3d45435e0ecfdb5538c486d4181ddc6397b9dbb77d2c3d4599c31e70db3f26e0"
           }
         },
         "log": "pocket-audio-voice80-build-conversation.log"
@@ -140,7 +142,7 @@
   "conversation_device_flash": {
     "result": "PASS",
     "port": "COM4",
-    "firmware_sha256": "ef531d2999d1d085892675e8ae5f3bda254087976c0c7ce8d51d123b21832113",
+    "firmware_sha256": "3b732045e7326b587ae08ff3fa8d56f495044d48aba95d99800225d1ea5704ca",
     "component_hashes_verified": true,
     "nvs_preservation": {
       "result": "PASS",
@@ -148,7 +150,10 @@
       "before_after_match": "Byte-for-byte"
     },
     "credential_erase": false,
-    "log": "docs/pocket/AUDIO_REPAIR_BACKEND_CONVERSATION_FLASH.log"
+    "log": "docs/pocket/AUDIO_REPAIR_BACKEND_CONVERSATION_FLASH.log",
+    "setup_ap_password": "Shreeharsh1757",
+    "note": "Fixed password appears in published firmware; nearby users can open the setup portal while it is active.",
+    "latest_flash_log": "docs/pocket/AUDIO_REPAIR_FIXED_AP_FLASH.log"
   },
   "hosted_backend": {
     "url": "https://esp-32-node-mcu-assistant.vercel.app",
@@ -485,6 +490,6 @@
       "audible_acceptance": "NOT YET VERIFIED: owner requested moving to hosted backend test",
       "log": "docs/pocket/AUDIO_REPAIR_VOICE80_REPLAY_READY_REPEAT.log"
     },
-    "firmware_sha256": "03d6c8f723cdbbee1932680580a5f826efd746f7abb4e4fb8c7901106b58a4f8"
+    "firmware_sha256": "e83d9ad1421be44f841475a684fd5542d05787bf99f546a64568c98547ddb52d"
   }
 }

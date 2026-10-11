@@ -10,6 +10,13 @@ conversation image was installed on COM4. Its component hashes verified, the
 24,576-byte NVS backup matched byte-for-byte, and no credential erase was
 performed.
 
+To resolve the owner's phone rejecting the randomly generated AP key, the owner
+requested a fixed setup password. Both Pocket variants were rebuilt and all
+113 host tests passed. The conversation image was reflashed with the WPA2 AP
+password `Shreeharsh1757`; image hashes verified and NVS again matched
+byte-for-byte. Because this password is fixed in the published firmware, anyone
+within Wi-Fi range can open the setup portal while the hotspot is active.
+
 ## Findings and changes
 
 1. **Confirmed capture scheduling defect:** `AudioService::PrintDiagnostics()`
@@ -278,7 +285,7 @@ Final validation: **PASS**, 113 host tests (including the extended tone);
 **PASS**, both Pocket variants and the representative `bread-compact-esp32-lcd`
 build with ESP-IDF v6.1. Image inspection verified classic ESP32 chip headers,
 boot/app checksums, partition bounds and the 4 MB/no-PSRAM configuration. The
-diagnostics merged image is 2,229,840 bytes; conversation is 2,245,120 bytes.
+diagnostics merged image is 2,229,840 bytes; conversation is 2,245,104 bytes.
 Their app images fit the 0x3f0000 factory partition. Local checksum verification
 is separate from installation and uses no serial access. Short offline PCM
 export, clear microphone speech and heap/stack checks passed after installation;
@@ -396,7 +403,7 @@ prolonged conversation stability.
 | Amplifier electrical output | NOT YET VERIFIED | Actual VIN, SD/MODE, physical I2S and differential 440 Hz measurements missing |
 | Audible speaker tone | PASS, latest retest | Owner confirmed horn-like tone clearly audible for five seconds after checking joints; earlier faint/silent observations retained |
 | Audible speech replay | NOT YET VERIFIED on latest repeat | Initial volume-80 replay not heard; stronger-input repeat sent 26,880 frames without errors, listening result unconfirmed |
-| Conversation firmware install | PASS | Component hashes verified after COM4 flash; 24,576-byte NVS matched before/after |
+| Conversation firmware install | PASS | Fixed-AP-key image hashes verified after COM4 flash; 24,576-byte NVS matched before/after |
 | Vercel health | PASS | Production `/health`: HTTP 200, `configured: true` |
 | Wi-Fi connectivity | NOT YET VERIFIED | Owner still needs to complete setup hotspot provisioning |
 | Gemini voice conversation | NOT YET VERIFIED | Deployed provider hello, STT, audible reply and next-turn tests remain |
