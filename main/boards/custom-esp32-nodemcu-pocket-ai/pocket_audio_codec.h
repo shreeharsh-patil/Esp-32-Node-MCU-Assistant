@@ -28,7 +28,7 @@ public:
     // PCM accepted by I2S, before safety gain. Not an acoustic measurement.
     uint32_t PlaybackRms() const;
     // Called by the board control task only while upstream playback is idle.
-    bool DiagnosticTone();
+    bool DiagnosticTone(bool extended = false);
     // Idle service only; bounded PCM stream with temporary high-speed UART and host ACK.
     bool DiagnosticRecord();
     void PrintSignalExpectations() const;

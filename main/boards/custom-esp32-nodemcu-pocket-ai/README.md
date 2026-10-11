@@ -66,7 +66,11 @@ for 100%. This is a digital limit, not a measured speaker wattage guarantee.
 There is no automatic test tone at boot.
 
 Audio repair diagnostics: `tone` uses a 300 ms, 440 Hz waveform at a fixed,
-temporary low gain, then restores the saved volume. `mic` measures five seconds
+temporary low gain, then restores the saved volume. `tone long` plays for five
+seconds with approximately 16 times the PCM amplitude, still through the same
+absolute output cap. Both tests restore volume without writing settings.
+The capture utility accepts `--command tone-long` for the extended test.
+`mic` measures five seconds
 of capture; the serial utility can export PCM to WAV using a temporary
 921600-baud handshake and 512 B scratch buffer. The normal console returns to
 115200 baud. `testaudio` retains the upstream Opus replay test. See

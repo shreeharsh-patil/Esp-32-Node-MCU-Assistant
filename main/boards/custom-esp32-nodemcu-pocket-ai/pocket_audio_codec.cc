@@ -215,9 +215,12 @@ uint32_t PocketAudioCodec::PlaybackRms() const {
     return playback_rms_.load();
 }
 
-bool PocketAudioCodec::DiagnosticTone() {
+bool PocketAudioCodec::DiagnosticTone(bool extended) {
     PrintSignalExpectations();
-    const int saved_volume = safe_volume_.exchange(50);
+    const int duration_ms = extended ? 5000 : 300;
+    const int source_peak = extended ? 24000 : 6000;
+    const int total_frames = duration_ms * 16;
+    const int saved_volume = safe_volume_.exchange(extended ? 100 : 50);
     const bool saved_output = playback_.load();
     diagnostic_playback_.store(true);
     speaker_previous_ = speaker_filtered_ = 0;
@@ -226,11 +229,14 @@ bool PocketAudioCodec::DiagnosticTone() {
     bool ok = ready_;
     uint32_t peak = 0;
     int32_t example_left = 0, example_right = 0;
-    for (int block = 0; block < 30 && ok; ++block) {
+    ESP_LOGI(TAG, "TONE starting 440Hz %dms; temporary volume=%d; output cap applies", duration_ms,
+             safe_volume_.load());
+    for (int block = 0; block < total_frames / 160 && ok; ++block) {
         for (int i = 0; i < 160; ++i) {
             const int n = block * 160 + i;
-            const float ramp = std::min(1.0f, std::min(n, 4799 - n) / 160.0f);
-            samples[i] = static_cast<int16_t>(6000 * ramp * std::sin(n * 6.2831853f * 440 / 16000));
+            const float ramp = std::min(1.0f, std::min(n, total_frames - 1 - n) / 160.0f);
+            samples[i] =
+                static_cast<int16_t>(source_peak * ramp * std::sin(n * 6.2831853f * 440 / 16000));
         }
         ok = Write(samples.data(), samples.size()) == static_cast<int>(samples.size());
         peak = std::max(peak, TxPeak());
@@ -243,7 +249,8 @@ bool PocketAudioCodec::DiagnosticTone() {
     samples.fill(0);
     for (int i = 0; i < kDmaDescriptors && ok; ++i)
         ok = Write(samples.data(), samples.size()) == static_cast<int>(samples.size());
-    ESP_LOGI(TAG, "TONE 440Hz 300ms fixed diagnostic gain; TX PCM16 peak=%lu (after gain)", peak);
+    ESP_LOGI(TAG, "TONE 440Hz %dms fixed diagnostic gain; TX PCM16 peak=%lu (after gain)",
+             duration_ms, peak);
     ESP_LOGI(TAG, "TONE example TX L=0x%08lx R=0x%08lx signed_pcm16=%ld",
              static_cast<uint32_t>(example_left), static_cast<uint32_t>(example_right),
              example_left / 65536);

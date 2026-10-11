@@ -24,6 +24,82 @@ def recording():
 
 
 class AudioDiagnosticsTests(unittest.TestCase):
+    def test_real_tones_duration_gain_and_state_restoration(self):
+        compiler = shutil.which('g++')
+        if not compiler:
+            self.skipTest('native C++ compiler not installed')
+        source = (ROOT / 'main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc').read_text()
+        start = source.index('bool PocketAudioCodec::DiagnosticTone(')
+        end = source.index('\nvoid PocketAudioCodec::PrintSignalExpectations()', start)
+        fixture = r'''
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include "audio_math.h"
+template<class... Args> void Log(Args...) {}
+#define ESP_LOGI(...) Log(__VA_ARGS__)
+#define TAG "test"
+class PocketAudioCodec {
+public:
+    std::atomic<int> safe_volume_{20};
+    std::atomic<bool> playback_{false}, diagnostic_playback_{false};
+    float speaker_previous_=0, speaker_filtered_=0;
+    bool ready_=true, fail_=false;
+    static constexpr int kDmaDescriptors=8;
+    std::array<int32_t, 320> tx_words_{};
+    uint32_t frames_=0, peak_=0, block_peak_=0;
+    bool DiagnosticTone(bool extended=false);
+    void PrintSignalExpectations() {}
+    void EnableOutput(bool enabled) { playback_.store(enabled); }
+    uint32_t TxPeak() const { return block_peak_; }
+    int Write(const int16_t* data, int samples) {
+        assert(diagnostic_playback_.load() && playback_.load());
+        if (fail_) return 0;
+        block_peak_=0;
+        for (int i=0; i<samples; ++i) {
+            const int32_t word=pocket::ConvertSpeaker(data[i], speaker_previous_,
+                                                     speaker_filtered_, safe_volume_.load());
+            tx_words_[i*2]=tx_words_[i*2+1]=word;
+            const auto peak=static_cast<uint32_t>(std::abs(word / 65536));
+            assert(peak <= 2621);
+            block_peak_=std::max(block_peak_, peak);
+        }
+        peak_=std::max(peak_, block_peak_);
+        frames_+=samples;
+        return samples;
+    }
+};
+'''
+        checks = r'''
+int main() {
+    PocketAudioCodec short_tone;
+    assert(short_tone.DiagnosticTone());
+    assert(short_tone.frames_ == 6080 && short_tone.peak_ >= 110 && short_tone.peak_ <= 130);
+    assert(short_tone.safe_volume_ == 20 && !short_tone.playback_ && !short_tone.diagnostic_playback_);
+    PocketAudioCodec long_tone;
+    long_tone.safe_volume_=37;
+    long_tone.playback_=true;
+    assert(long_tone.DiagnosticTone(true));
+    assert(long_tone.frames_ == 81280 && long_tone.peak_ >= 1800 && long_tone.peak_ <= 2000);
+    assert(long_tone.peak_ > 14 * short_tone.peak_);
+    assert(long_tone.safe_volume_ == 37 && long_tone.playback_ && !long_tone.diagnostic_playback_);
+    PocketAudioCodec failed;
+    failed.fail_=true;
+    assert(!failed.DiagnosticTone(true));
+    assert(failed.safe_volume_ == 20 && !failed.playback_ && !failed.diagnostic_playback_);
+}
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            cpp, exe = Path(directory) / 'tone.cpp', Path(directory) / 'tone.exe'
+            cpp.write_text(fixture + source[start:end] + checks)
+            subprocess.run([compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror',
+                            '-I', str(ROOT / 'main/boards/custom-esp32-nodemcu-pocket-ai'),
+                            str(cpp), '-o', str(exe)], check=True)
+            subprocess.run([str(exe)], check=True)
+
     def test_five_second_export_and_crc_detects_valid_hex_corruption(self):
         pcm, _ = recording()
         pcm *= 5

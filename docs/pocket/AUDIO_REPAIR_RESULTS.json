@@ -7,17 +7,18 @@
   "credentials_erased": false,
   "build_source_sha256": {
     "main/audio/audio_service.cc": "2f088b4bc31c05275f0bf8bc6bdd5944828180ef23352eadd9e9cf7d439857b7",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "c31e4661b7313dcff83cafb9b41a55e4f6f854a43dba5951c67a0aa8d50ab2de",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "91995f7f4c4595d197cd36ba52af574e6f602d9c6143b000a50bfae627b5f3fe",
-    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_board.cc": "18516966f3ca7b5bdcdab96305d57953628564b1e5fb3cbfba4040340f87bf39",
-    "scripts/pocket_serial_capture.py": "d61dd4517ff83cf52b3033db337bac0ce64d06b6bf335a3d9946f8b7df9f052d"
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "035f631293c0580c750af7fa5a40073b0b46b153b5af94b8eecc95db70805057",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "c737ceb4f940a051a79158ae71570675fd60e488062d56a34aa9dfbf5d51a854",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_board.cc": "d35348333d4fd27f360207abf1a9fbb47a39ada3a3edba75d330f727348aae13",
+    "scripts/pocket_serial_capture.py": "15eb2441151d57a8bbcbcb60c754556f45264ce135076a42e5635f62afef77d5"
   },
   "validation": {
     "host_tests": {
       "result": "PASS",
-      "tests": 112,
+      "tests": 113,
       "skipped": 0,
-      "log": "pocket-audio-host-tests.log"
+      "log": "pocket-audio-long-tone-host-tests.log",
+      "runner": "scripts/pocket_host_tests.py (Windows portable runner, UTF-8)"
     },
     "backend_tests": {
       "result": "PASS",
@@ -36,10 +37,10 @@
       "diagnostics": {
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32-diagnostics.bin",
-        "bytes": 2229424,
-        "sha256": "4b863e6a77b503239065b22270fdfb242f525e6822269e9a04d8abc477aab919",
+        "bytes": 2229680,
+        "sha256": "bb1b9e2742f009580d2b76153d0731953ce775a0915daaa9b7e359d59249060e",
         "idf": "v6.1",
-        "app_bytes": 2163888,
+        "app_bytes": 2164144,
         "factory_partition_bytes": 4128768,
         "physical_acceptance": "NOT YET VERIFIED",
         "components": {
@@ -52,18 +53,19 @@
             "sha256": "c9a826e85500d14d1854ce78e47452d4614a1be371bbd056278d2cb3398fbbfd"
           },
           "diagnostics/xiaozhi.bin": {
-            "bytes": 2163888,
-            "sha256": "17d7c5c170f7979ea53def97b5c542bd51d6cde865de771f524eafe6fde94094"
+            "bytes": 2164144,
+            "sha256": "b2534d25dec5731cc93cd47229d005b5a62704d579306d7336259c9fdbfdf3a3"
           }
-        }
+        },
+        "log": "pocket-audio-long-tone-build-diagnostics.log"
       },
       "conversation": {
         "result": "PASS",
         "image": "pocket-xiaozhi-esp32.bin",
-        "bytes": 2244704,
-        "sha256": "48e40ca6dffb395bd711a57337834041f138de8f5df29af5e45d3fa39671dc0e",
+        "bytes": 2244960,
+        "sha256": "1c042f336708eb3e0cd66842d3fe362fca4bf741351532d0f6ae21e857f18f1d",
         "idf": "v6.1",
-        "app_bytes": 2179168,
+        "app_bytes": 2179424,
         "factory_partition_bytes": 4128768,
         "physical_acceptance": "NOT YET VERIFIED",
         "components": {
@@ -76,10 +78,11 @@
             "sha256": "c9a826e85500d14d1854ce78e47452d4614a1be371bbd056278d2cb3398fbbfd"
           },
           "conversation/xiaozhi.bin": {
-            "bytes": 2179168,
-            "sha256": "3377241f77e8770d5fdd0453dd52aebabaad80c07844923650c77d5126239054"
+            "bytes": 2179424,
+            "sha256": "7739ee5404bf850aad04edd54bd3831848bde949481c9873e726c51dce53365d"
           }
-        }
+        },
+        "log": "pocket-audio-long-tone-build-conversation.log"
       }
     }
   },
@@ -265,11 +268,47 @@
     "interpretation": "Inconclusive for amplifier failure: direct chip SD_MODE grounded is shutdown; branded guide says opposite, actual breakout circuit not verified.",
     "restoration": "Owner instructed to remove SD-ground link with USB disconnected; restoration not yet confirmed",
     "remaining_checks": [
-      "Unobscured component-side inspection of actual SD circuitry",
+      "SD circuit traces not established by later uncovered photos; one amplifier IC and passives visible",
       "VIN-GND voltage",
       "SD-GND bias voltage",
       "Amplifier-side clocks/data",
       "Speaker continuity and differential output"
     ]
+  },
+  "extended_tone_update": {
+    "owner_request": "Increase the volume and try again a longer duration",
+    "command": "tone long",
+    "capture_argument": "--command tone-long",
+    "duration_ms": 5000,
+    "frequency_hz": 440,
+    "temporary_volume": 100,
+    "source_pcm16_peak": 24000,
+    "approximate_post_gain_pcm16_peak": 1920,
+    "amplitude_ratio_to_short_tone": 16,
+    "tone_frames": 80000,
+    "total_frames_with_trailing_silence": 81280,
+    "regression": "PASS: duration, attenuation, cap and state restoration including failed writes",
+    "built_variants": [
+      "diagnostics",
+      "conversation"
+    ],
+    "flashed": false,
+    "physical_acceptance": "NOT YET VERIFIED: requires explicit approval to flash updated diagnostics"
+  },
+  "amplifier_3v3_power_trial": {
+    "reported_power_source": "ESP32 3V3 after VIN removal; unmeasured",
+    "instructed_sd": "Open",
+    "instructed_gain": "Open",
+    "digital_tone": {
+      "result": "PASS",
+      "frames": 6080,
+      "tx_errors": 0,
+      "post_gain_pcm16_peak": 120
+    },
+    "audible_tone": {
+      "result": "NOT YET VERIFIED",
+      "owner_observation": "Owner requested increased volume/duration; listening result not supplied"
+    },
+    "log": "docs/pocket/AUDIO_REPAIR_3V3_POWER_TONE.log"
   }
 }

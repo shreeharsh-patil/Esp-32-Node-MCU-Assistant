@@ -42,6 +42,12 @@ repair; no credential erase was performed.
    attenuation. Stored volume (including mute) is restored without NVS writes.
    The absolute 8% digital cap remains. A DMA ring of silence follows the tone;
    the idle service power timer cannot mute it partway through. No boot tone.
+   The owner-requested `tone long` extends playback to five seconds and uses
+   temporary volume 100 with a 24,000-count source waveform, approximately
+   1,920 PCM16 peak counts after gain (16 times the short tone). It retains the
+   absolute cap, taper, trailing silence and restoration of volume/output state.
+   The extended test requires approval to install the updated firmware; physical
+   playback is **NOT YET VERIFIED**.
 6. **Independent microphone recording:** `mic` captures five seconds of 16 kHz
    mono PCM16 after left-slot conversion, DC removal and configured gain. RMS,
    peak, clipping percentage, captured frame count and error/overrun deltas
@@ -149,9 +155,17 @@ L/R words and zero TX errors. The owner reported **no sound**. This trial does
 not establish a defective amplifier: grounding a direct chip SD_MODE input is
 the documented shutdown state. Return SD to open with power disconnected;
 restoration has been requested but not yet confirmed. The owner also clarified
-that GAIN is open. Photos do not establish the SD circuit because tape obscures
-the component side, and amplifier-side supply/enable/data remain unmeasured.
+that GAIN is open. Later uncovered photos show one amplifier IC and passives,
+but do not establish the SD traces. Amplifier supply/enable/data remain unmeasured.
 The additional local log is `AUDIO_REPAIR_SD_GND_TONE.log`.
+
+For a subsequent power test the owner was instructed to move only the amplifier
+power wire from VIN to ESP32 3V3, with SD and GAIN open. The 3V3 configuration
+again accepted 6,080 frames with zero TX errors and PCM16 peak 120. The listening
+result has not been supplied, so acoustic output for this configuration is
+**NOT YET VERIFIED**. Log: `AUDIO_REPAIR_3V3_POWER_TONE.log`. Neither the supply
+voltage nor the 30-pin clone's USB-to-VIN circuit has been electrically measured.
+The owner requested increased volume and duration after this test.
 
 Both five-second recordings exported 80,000 frames with valid CRC32 and no RX
 errors or active DMA overruns. The initial environment recording had RMS 2459.46,
@@ -195,11 +209,12 @@ Opus conversion, local transport, authentication and provider lifecycle with
 mocked provider access; it is not a deployed Gemini voice conversation.
 Machine-readable results and firmware hashes are in `AUDIO_REPAIR_RESULTS.json`.
 
-Final validation: **PASS**, 112 host tests; **PASS**, 30 backend tests;
+Final validation: **PASS**, 113 host tests (including the extended tone);
+**PASS**, 30 backend tests from the prior audio repair;
 **PASS**, both Pocket variants and the representative `bread-compact-esp32-lcd`
 build with ESP-IDF v6.1. Image inspection verified classic ESP32 chip headers,
 boot/app checksums, partition bounds and the 4 MB/no-PSRAM configuration. The
-diagnostics merged image is 2,229,424 bytes; conversation is 2,244,704 bytes.
+diagnostics merged image is 2,229,680 bytes; conversation is 2,244,960 bytes.
 Their app images fit the 0x3f0000 factory partition. Local checksum verification
 is separate from installation and uses no serial access. Short offline PCM
 export, clear microphone speech and heap/stack checks passed after installation;
@@ -226,6 +241,13 @@ Only after explicit approval to install the diagnostics image:
 ```powershell
 python scripts/pocket_flash.py --port COM4 --diagnostics
 python scripts/pocket_serial_capture.py --port COM4 --seconds 20 --command diag --command tone --output docs/pocket/audio-offline.log
+```
+
+For the owner-requested louder five-second test, after installing the updated
+diagnostics firmware with explicit approval:
+
+```powershell
+python scripts/pocket_serial_capture.py --port COM4 --seconds 18 --command tone-long --command diag --output docs/pocket/audio-long-tone.log
 ```
 
 After local hardware acceptance and approval to install conversation firmware:
