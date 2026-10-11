@@ -142,6 +142,17 @@ The owner confirmed the amplifier power wire is connected to ESP32 VIN and
 the speaker wires connect only to SPK+ and SPK−. Those intended connections
 are confirmed by description, not by voltage or continuity measurements.
 
+The owner subsequently requested a controlled SD-to-GND trial following the
+SmartElex guide and confirmed making that connection with USB disconnected.
+The same repaired tone again accepted 6,080 frames, PCM16 peak 120, matching
+L/R words and zero TX errors. The owner reported **no sound**. This trial does
+not establish a defective amplifier: grounding a direct chip SD_MODE input is
+the documented shutdown state. Return SD to open with power disconnected;
+restoration has been requested but not yet confirmed. The owner also clarified
+that GAIN is open. Photos do not establish the SD circuit because tape obscures
+the component side, and amplifier-side supply/enable/data remain unmeasured.
+The additional local log is `AUDIO_REPAIR_SD_GND_TONE.log`.
+
 Both five-second recordings exported 80,000 frames with valid CRC32 and no RX
 errors or active DMA overruns. The initial environment recording had RMS 2459.46,
 peak 32768 and 0.14% clipping (ambient conditions were not controlled). The

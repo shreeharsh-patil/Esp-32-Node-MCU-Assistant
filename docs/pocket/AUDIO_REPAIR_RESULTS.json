@@ -243,5 +243,33 @@
       "docs/pocket/AUDIO_REPAIR_MIC_SPEECH.log",
       "docs/pocket/AUDIO_REPAIR_OPUS_STRESS.log"
     ]
+  },
+  "sd_ground_trial": {
+    "date": "2026-10-11",
+    "authorization": "Owner requested lets try, then confirmed done after power-off wiring instructions",
+    "reported_sd_connection": "Amplifier SD to amplifier GND",
+    "owner_gain_clarification": "GAIN open",
+    "digital_tone": {
+      "result": "PASS",
+      "frames": 6080,
+      "post_gain_pcm16_peak": 120,
+      "example_left_word": "0xffca0000",
+      "example_right_word": "0xffca0000",
+      "tx_errors": 0
+    },
+    "audible_tone": {
+      "result": "FAIL",
+      "owner_observation": "No sound"
+    },
+    "log": "docs/pocket/AUDIO_REPAIR_SD_GND_TONE.log",
+    "interpretation": "Inconclusive for amplifier failure: direct chip SD_MODE grounded is shutdown; branded guide says opposite, actual breakout circuit not verified.",
+    "restoration": "Owner instructed to remove SD-ground link with USB disconnected; restoration not yet confirmed",
+    "remaining_checks": [
+      "Unobscured component-side inspection of actual SD circuitry",
+      "VIN-GND voltage",
+      "SD-GND bias voltage",
+      "Amplifier-side clocks/data",
+      "Speaker continuity and differential output"
+    ]
   }
 }
