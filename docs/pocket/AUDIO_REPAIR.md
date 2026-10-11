@@ -5,8 +5,10 @@ classic ESP32-WROOM-32 / 30-pin NodeMCU, custom Pocket board only. The animated
 black face, display pins, backend implementation, credentials and other boards
 are retained. After explicit owner approval ("flash"), the diagnostics image was
 installed on COM4. NVS was privately backed up and verified byte-for-byte
-unchanged afterward. Conversation firmware has not been installed for this
-repair; no credential erase was performed.
+unchanged afterward. After the owner requested a hosted-backend test, the
+conversation image was installed on COM4. Its component hashes verified, the
+24,576-byte NVS backup matched byte-for-byte, and no credential erase was
+performed.
 
 ## Findings and changes
 
@@ -370,16 +372,18 @@ python scripts/pocket_flash.py --port COM4
 The source path remains mic → lite engine → 16 kHz/60 ms Opus → authenticated
 WSS → backend/Gemini → 24 kHz Opus → decoder/resampler → fixed 16 kHz I2S.
 The application defers automatic capture until playback queues drain, and the
-board reopens idle sessions with bounded retry. No new protocol defect was
-confirmed by this audit or local backend tests; the current device remains in
-setup without DHCP. A working router/backend cannot cure an offline tone's
-silent amplifier.
+board reopens idle sessions with bounded retry. Backend local tests and syntax
+checks pass. The deployed `https://esp-32-node-mcu-assistant.vercel.app/health`
+returns HTTP 200 and `configured: true`. Device Wi-Fi provisioning and a real
+Gemini voice conversation still require the owner to complete hotspot setup and
+test the hardware.
 
 ## Acceptance report
 
-Statuses refer to physical evidence after approved diagnostics installation.
-Historical failures are retained in the preceding evidence and JSON. PASS for
-short offline tests does not establish prolonged conversation stability.
+Statuses refer to physical evidence after the diagnostics and conversation
+images were installed with NVS preserved. Historical failures are retained in
+the preceding evidence and JSON. PASS for short offline tests does not establish
+prolonged conversation stability.
 
 | Test | Result | Evidence |
 |---|---|---|
@@ -392,5 +396,7 @@ short offline tests does not establish prolonged conversation stability.
 | Amplifier electrical output | NOT YET VERIFIED | Actual VIN, SD/MODE, physical I2S and differential 440 Hz measurements missing |
 | Audible speaker tone | PASS, latest retest | Owner confirmed horn-like tone clearly audible for five seconds after checking joints; earlier faint/silent observations retained |
 | Audible speech replay | NOT YET VERIFIED on latest repeat | Initial volume-80 replay not heard; stronger-input repeat sent 26,880 frames without errors, listening result unconfirmed |
-| Wi-Fi connectivity | NOT YET VERIFIED | Current diagnostics image intentionally disables network; NVS preserved |
-| Gemini voice conversation | NOT YET VERIFIED | Local backend tests pass; deployed hello, STT, audible reply and next turn required |
+| Conversation firmware install | PASS | Component hashes verified after COM4 flash; 24,576-byte NVS matched before/after |
+| Vercel health | PASS | Production `/health`: HTTP 200, `configured: true` |
+| Wi-Fi connectivity | NOT YET VERIFIED | Owner still needs to complete setup hotspot provisioning |
+| Gemini voice conversation | NOT YET VERIFIED | Deployed provider hello, STT, audible reply and next-turn tests remain |

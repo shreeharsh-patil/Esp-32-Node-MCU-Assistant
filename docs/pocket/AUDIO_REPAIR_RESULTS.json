@@ -137,6 +137,30 @@
     "offline_runtime_heap_and_stack_short_runs": "PASS",
     "prolonged_conversation_dma_stability": "NOT YET VERIFIED"
   },
+  "conversation_device_flash": {
+    "result": "PASS",
+    "port": "COM4",
+    "firmware_sha256": "ef531d2999d1d085892675e8ae5f3bda254087976c0c7ce8d51d123b21832113",
+    "component_hashes_verified": true,
+    "nvs_preservation": {
+      "result": "PASS",
+      "bytes": 24576,
+      "before_after_match": "Byte-for-byte"
+    },
+    "credential_erase": false,
+    "log": "docs/pocket/AUDIO_REPAIR_BACKEND_CONVERSATION_FLASH.log"
+  },
+  "hosted_backend": {
+    "url": "https://esp-32-node-mcu-assistant.vercel.app",
+    "health": {
+      "status": "PASS",
+      "http_status": 200,
+      "configured": true,
+      "checked_at": "2026-10-11"
+    },
+    "wifi_provisioning": "NOT YET VERIFIED",
+    "gemini_voice_conversation": "NOT YET VERIFIED"
+  },
   "speaker_root_cause": "Software attenuation contributed to insufficient test level. The owner confirmed a clear five-second tone with 80% digital gain/cap, PCM16 peak 19244 and zero TX errors, including the latest joint-check retest. Earlier silent/faint trials remain unexplained; supply, SD bias and continuity are unmeasured. The owner-approved higher normal gain is now installed and runtime volume is 80. Initial spoken replay was not heard; latest stronger-input replay listening result remains unconfirmed as the owner requested moving to a hosted backend test.",
   "microphone_root_cause": "Confirmed diagnostic queue-mutex blocking and stale idle DMA corrected. Repaired offline image exported two complete five-second recordings with valid CRC32 and zero active DMA drops/read errors. Owner confirmed clear recognizable words from computer WAV playback. Prolonged Wi-Fi/Gemini capture stability remains unverified.",
   "exact_amplifier": {
