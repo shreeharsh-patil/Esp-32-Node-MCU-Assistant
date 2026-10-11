@@ -34,6 +34,7 @@ export async function searchWeb(query, keys, options = {}) {
       if ([401, 403, 429, 500, 502, 503, 504].includes(response.status)) continue;
       if (!response.ok) return { error: 'Live search could not complete.' };
       const payload = await response.json();
+      if (payload.success === false) return { error: 'Live search could not complete.' };
       const found = Array.isArray(payload.data?.web) ? payload.data.web :
         Array.isArray(payload.data) ? payload.data : [];
       const results = found.slice(0, 3).filter(item => {

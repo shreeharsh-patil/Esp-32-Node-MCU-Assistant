@@ -90,7 +90,9 @@ When dashboard history is enabled, each new Live session loads a small, per-devi
 window of recent encrypted conversation turns from Neon. Clearing history removes
 that memory. Current-information questions use Firecrawl's web search when keys
 are configured; searches have a ten-second budget and return at most three source
-snippets to the voice model. The key is never sent to the ESP32.
+snippets to the voice model. Time questions use a direct clock tool with India
+Standard Time and UTC, without waiting for a web search. The keys are never sent
+to the ESP32.
 
 The 280×240 ESP32 screen cannot run YouTube's video player, and this backend
 does not extract a video's audio for speaker-only playback. The assistant will

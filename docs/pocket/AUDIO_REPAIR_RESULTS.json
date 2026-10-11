@@ -447,6 +447,7 @@
     "speech_audibility_and_reply_completion": "PENDING owner live test with corrected firmware and deployed backend",
     "conversation_memory": "IMPLEMENTED IN SOURCE: bounded recent encrypted turns reloaded per device from Neon when dashboard history is enabled; live deployment pending",
     "current_web_search": "IMPLEMENTED IN SOURCE: optional comma-separated FIRECRAWL_API_KEYS; Live tool calls have a 10-second total search budget; live key and deployment pending",
+    "current_time": "IMPLEMENTED IN SOURCE: direct Live tool returns UTC and India Standard Time without web search; deployment pending",
     "youtube_on_esp32": "UNSUPPORTED: display cannot run required YouTube player; audio-only extraction is not implemented"
   },
   "normal_voice_update": {
