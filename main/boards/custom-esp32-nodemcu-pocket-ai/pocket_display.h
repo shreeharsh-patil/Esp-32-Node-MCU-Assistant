@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
 #include <memory>
+#include "clock_renderer.h"
 #include "display/lcd_display.h"
 #include "face_animation.h"
 #include "face_renderer.h"
@@ -30,6 +31,7 @@ public:
     void WifiFeedback(const char* status, const char* detail = "");
     void PrintUiDiagnostics() const;
     bool PreviewExpression(const char* expression);
+    void ShowClock(bool show);
     bool AddTextGlyphs(const std::vector<TextGlyph>& glyphs, uint8_t bpp) override { return false; }
     bool SupportsGuiOperations() const override { return false; }
 
@@ -38,6 +40,9 @@ private:
     pocket::face::Engine engine_;
     pocket::face::TurnPose turn_pose_;
     std::unique_ptr<pocket::face::Renderer> renderer_;
+    pocket::ClockState clock_state_;
+    std::unique_ptr<pocket::ClockRenderer> clock_renderer_;
+    pocket::DisplayMode rendered_mode_ = pocket::DisplayMode::FACE;
     lv_obj_t* caption_ = nullptr;
     lv_timer_t* animation_ = nullptr;
     char caption_buffer_[513] = {}, displayed_caption_[513] = {};
@@ -56,6 +61,7 @@ private:
     std::atomic<uint32_t> refresh_us_{0}, max_refresh_us_{0};
     uint64_t refresh_started_ = 0;
     void Tick();
+    void UpdateClockMode();
     void Caption(const char* text, uint32_t duration_ms = 8000, bool dialogue = false);
     static void RefreshEvent(lv_event_t* event);
 };

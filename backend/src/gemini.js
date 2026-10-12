@@ -1,3 +1,4 @@
+import { currentClockTime, clockInstructions } from './clock.js';
 import { GoogleGenAI, Modality, ActivityHandling } from '@google/genai';
 import { randomInt, createHash } from 'node:crypto';
 import { searchWeb } from './search.js';
@@ -114,10 +115,7 @@ async function connectKey(config, key, onMessage, onFailure, createClient, optio
       let response = { error: 'Unsupported tool' };
       if (index >= 4) response = { error: 'At most four tools can run in one request. Please request fewer tools.' };
       else if (call.name === timeTool.name) {
-        const now = new Date();
-        response = { utc: now.toISOString(), india: new Intl.DateTimeFormat('en-IN', {
-          timeZone: 'Asia/Kolkata', dateStyle: 'full', timeStyle: 'long',
-        }).format(now) };
+        response = currentClockTime(options.timezone);
       } else if (call.name === searchTool.name) {
         try { response = await (options.search || searchWeb)(call.args?.query, config.firecrawlKeys); }
         catch { response = { error: 'Live search could not complete.' }; }
@@ -132,7 +130,7 @@ async function connectKey(config, key, onMessage, onFailure, createClient, optio
     model: config.model,
     config: {
       responseModalities: [Modality.AUDIO],
-      systemInstruction: instructionsWithMemory(config.instructions, options.memory),
+      systemInstruction: instructionsWithMemory(config.instructions, options.memory) + clockInstructions(options.timezone),
       tools: [{ functionDeclarations: config.firecrawlKeys?.length ? [searchTool, timeTool] : [timeTool] }],
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voice } } },
       inputAudioTranscription: {},

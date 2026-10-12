@@ -9,7 +9,9 @@
 #include <cstdio>
 #include <cstring>
 #include "application.h"
+#include "clock_state.h"
 #include "pocket_backend.h"
+#include "pocket_clock.h"
 #include "ssid_manager.h"
 #include "wifi_manager.h"
 
@@ -22,14 +24,15 @@ constexpr char kPage[] = R"HTML(<!doctype html>
 <h1>Connect your companion</h1><p>Choose a 2.4 GHz network.</p><label>Nearby networks<select id="net"><option value="">Choose or type below</option></select></label>
 <form id="form"><label>Network name<input id="ssid" maxlength="32" required autocomplete="off"></label><label>Wi-Fi password<input id="password" type="password" maxlength="64" autocomplete="new-password"></label>
 <fieldset id="backend" hidden><label>Your backend address<input id="backend_url" type="url" maxlength="192" placeholder="https://your-project.vercel.app" autocomplete="off"></label><label>Device token<input id="backend_token" type="password" minlength="32" maxlength="128" autocomplete="new-password"></label><small>Use the DEVICE_TOKEN from your server settings. Your AI provider API key stays on Vercel.</small></fieldset>
+<label>Clock timezone<select id="timezone"><option>Asia/Kolkata</option><option>Etc/UTC</option><option>Asia/Dubai</option><option>Asia/Singapore</option><option>Asia/Tokyo</option><option>Europe/London</option><option>America/New_York</option><option>America/Los_Angeles</option></select></label>
 <button id="go">Save and connect</button></form><p id="status" role="status">Loading nearby networks...</p><small>Keep this page open. If your phone says the hotspot has no internet, choose Stay connected. Hidden networks can be typed manually.</small>
 <script>
 const $=id=>document.getElementById(id);
 $('net').onchange=()=>{$('ssid').value=$('net').value};
 async function scan(){try{const data=await(await fetch('/scan',{cache:'no-store'})).json();const current=$('net').value;$('net').replaceChildren(new Option('Choose or type below',''));for(const a of data)$('net').add(new Option(a.ssid+' ('+a.rssi+' dBm)',a.ssid));$('net').value=current}catch{}}
-let finishing=false;
-async function status(){try{const d=await(await fetch('/status',{cache:'no-store'})).json();$('status').textContent=d.status+(d.ip?' - IP '+d.ip:'');$('go').disabled=d.busy;$('backend').hidden=!d.custom_backend;$('backend_url').required=d.custom_backend;$('backend_token').required=d.custom_backend;if(d.backend_url&&!$('backend_url').value)$('backend_url').value=d.backend_url;if(d.status==='Connected'&&!finishing){finishing=true;$('status').textContent+=' - Saved. Starting your assistant.';setTimeout(()=>fetch('/finish',{method:'POST'}).catch(()=>{}),3000)}}catch{if(finishing)$('status').textContent='Wi-Fi saved. Rejoin your home network.'}}
-$('form').onsubmit=async e=>{e.preventDefault();$('go').disabled=true;$('status').textContent='Connecting...';try{const r=await fetch('/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:$('ssid').value,password:$('password').value,backend_url:$('backend_url').value,backend_token:$('backend_token').value})});const d=await r.json();$('password').value='';$('backend_token').value='';if(!r.ok)$('status').textContent=d.error}catch{$('status').textContent='Reconnect to the setup hotspot, then check again.'}setTimeout(status,1000)};
+let finishing=false,zoneLoaded=false;
+async function status(){try{const d=await(await fetch('/status',{cache:'no-store'})).json();$('status').textContent=d.status+(d.ip?' - IP '+d.ip:'');$('go').disabled=d.busy;if(!zoneLoaded&&d.timezone){$('timezone').value=d.timezone;zoneLoaded=true}$('backend').hidden=!d.custom_backend;$('backend_url').required=d.custom_backend;$('backend_token').required=d.custom_backend;if(d.backend_url&&!$('backend_url').value)$('backend_url').value=d.backend_url;if(d.status==='Connected'&&!finishing){finishing=true;$('status').textContent+=' - Saved. Starting your assistant.';setTimeout(()=>fetch('/finish',{method:'POST'}).catch(()=>{}),3000)}}catch{if(finishing)$('status').textContent='Wi-Fi saved. Rejoin your home network.'}}
+$('form').onsubmit=async e=>{e.preventDefault();$('go').disabled=true;$('status').textContent='Connecting...';try{const r=await fetch('/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:$('ssid').value,password:$('password').value,backend_url:$('backend_url').value,backend_token:$('backend_token').value,timezone:$('timezone').value})});const d=await r.json();$('password').value='';$('backend_token').value='';if(!r.ok)$('status').textContent=d.error}catch{$('status').textContent='Reconnect to the setup hotspot, then check again.'}setTimeout(status,1000)};
 scan();status();setInterval(status,1500);setInterval(scan,10000);
 </script></html>)HTML";
 bool Rejected(int reason) {
@@ -295,6 +298,7 @@ void PocketWifi::Worker() {
                 station_deadline_ = 0;
                 if (!had_connection_) {
                     had_connection_ = true;
+                    pocket::StartClockSync();
                     Diagnostics();
                     // DNS is checked only on this worker, not in a Wi-Fi event callback.
                     addrinfo* address = nullptr;
@@ -331,6 +335,8 @@ void PocketWifi::Worker() {
             bool saved = Saved(pending_.ssid, pending_.password);
             if (saved && Board::GetInstance().UsesCustomBackend())
                 saved = pocket::SaveBackend(pending_.backend_url, pending_.backend_token);
+            if (saved)
+                saved = pocket::SaveClockTimezone(pending_.timezone);
             memset(pending_.password, 0, sizeof(pending_.password));
             memset(pending_.backend_token, 0, sizeof(pending_.backend_token));
             busy_.store(false);
@@ -458,14 +464,22 @@ esp_err_t PocketWifi::Http(httpd_req_t* req) {
         auto* password = cJSON_GetObjectItemCaseSensitive(json, "password");
         auto* backend_url = cJSON_GetObjectItemCaseSensitive(json, "backend_url");
         auto* backend_token = cJSON_GetObjectItemCaseSensitive(json, "backend_token");
+        auto* timezone = cJSON_GetObjectItemCaseSensitive(json, "timezone");
+        const auto saved_zone = pocket::ClockTimezone();
+        const char* zone =
+            timezone && cJSON_IsString(timezone) ? timezone->valuestring : saved_zone.c_str();
+        const bool timezone_valid =
+            (!timezone || cJSON_IsString(timezone)) && pocket::FindClockZone(zone);
         const bool custom = Board::GetInstance().UsesCustomBackend();
         const bool backend_valid =
             !custom || (cJSON_IsString(backend_url) && cJSON_IsString(backend_token) &&
                         pocket::ValidBackendUrl(backend_url->valuestring) &&
                         pocket::ValidDeviceToken(backend_token->valuestring));
-        const bool valid = backend_valid && cJSON_IsString(ssid) && cJSON_IsString(password) &&
+        const bool valid = backend_valid && timezone_valid && cJSON_IsString(ssid) &&
+                           cJSON_IsString(password) &&
                            pocket::ValidWifiCredentials(ssid->valuestring, password->valuestring);
         if (valid) {
+            snprintf(request.timezone, sizeof(request.timezone), "%s", zone);
             snprintf(request.ssid, sizeof(request.ssid), "%s", ssid->valuestring);
             snprintf(request.password, sizeof(request.password), "%s", password->valuestring);
             if (custom) {
@@ -489,7 +503,7 @@ esp_err_t PocketWifi::Http(httpd_req_t* req) {
             return httpd_resp_sendstr(req,
                                       "{\"error\":\"Use an SSID of 1-32 bytes and a valid Wi-Fi "
                                       "password. Custom backend needs an HTTPS origin and a 32-128 "
-                                      "character device token\"}");
+                                      "character device token and a supported clock timezone\"}");
         }
         httpd_resp_set_status(req, "202 Accepted");
         return httpd_resp_sendstr(req, "{\"accepted\":true}");
@@ -514,6 +528,7 @@ esp_err_t PocketWifi::Http(httpd_req_t* req) {
                 cJSON_AddItemToArray(json, item);
             }
         } else {
+            cJSON_AddStringToObject(json, "timezone", pocket::ClockTimezone().c_str());
             cJSON_AddStringToObject(json, "status", self->status_);
             cJSON_AddStringToObject(json, "ip", self->ip_);
             cJSON_AddBoolToObject(json, "busy", self->busy_.load() || self->connect_queued_.load());

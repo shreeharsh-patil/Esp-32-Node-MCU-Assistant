@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include "clock_renderer.h"
 #include "face_animation.h"
 #include "face_renderer.h"
 
@@ -41,6 +42,79 @@ void Save(const std::filesystem::path& path) {
         std::fwrite(rgb, 1, 3, file);
     }
     std::fclose(file);
+}
+void CheckClock(lv_display_t* display, lv_obj_t* screen, const std::filesystem::path& output) {
+    pocket::ClockRenderer clock(screen);
+    Renderer face(screen);
+    Engine engine(7);
+    face.Draw(engine.Step(2000, Mode::Idle, 0, 0, false));
+    face.Visible(false);
+    clock.Visible(true);
+    std::tm local{};
+    local.tm_year = 126;
+    local.tm_mon = 9;
+    local.tm_mday = 12;
+    local.tm_wday = 1;
+    local.tm_hour = 22;
+    local.tm_min = 28;
+    auto text = pocket::FormatClock(1791844080, local);
+    clock.Update(text);
+    lv_tick_inc(50);
+    lv_refr_now(display);
+    Save(output / "clock-reference.ppm");
+    auto before = flushes;
+    for (int i = 0; i < 100; ++i) {
+        clock.Update(text);
+        lv_tick_inc(50);
+        lv_refr_now(display);
+    }
+    assert(flushes == before);  // No repeated full-screen or per-second redraw.
+    auto before_pixels = transferred_pixels;
+    local.tm_min = 29;
+    clock.Update(pocket::FormatClock(1791844140, local));
+    lv_tick_inc(50);
+    lv_refr_now(display);
+    assert(transferred_pixels > before_pixels);
+    assert(transferred_pixels - before_pixels < kWidth * kHeight);
+    Save(output / "clock-minute.ppm");
+    local.tm_hour = 0;
+    local.tm_min = 0;
+    local.tm_mday = 13;
+    local.tm_wday = 2;
+    clock.Update(pocket::FormatClock(1791844200, local));
+    lv_tick_inc(50);
+    lv_refr_now(display);
+    Save(output / "clock-midnight.ppm");
+    clock.Update(pocket::ClockText{});
+    lv_tick_inc(50);
+    lv_refr_now(display);
+    Save(output / "clock-sync.ppm");
+    // All 12h layouts and repeated transitions through real LVGL. No cropped
+    // flush rectangle, stale digits, accumulating objects, or leaked font RAM.
+    lv_mem_monitor_t initial{};
+    lv_mem_monitor(&initial);
+    for (int i = 0; i < 100; ++i) {
+        local.tm_hour = i % 24;
+        local.tm_min = i % 60;
+        face.Visible(false);
+        clock.Visible(true);
+        clock.Update(pocket::FormatClock(1791844200, local));
+        lv_tick_inc(50);
+        lv_refr_now(display);
+        clock.Visible(false);
+        face.Visible(true);
+        lv_tick_inc(50);
+        lv_refr_now(display);
+        assert(pixels[0] == 0 && pixels[kWidth * kHeight - 1] == 0);
+    }
+    Save(output / "clock-return-face.ppm");
+    lv_mem_monitor_t final{};
+    lv_mem_monitor(&final);
+    assert(final.free_size >= initial.free_size);
+    std::printf(
+        "CLOCK LVGL PASS: unchanged time 0 flushes; minute partial redraw; 100 round trips; "
+        "free=%zu max_used=%zu\n",
+        final.free_size, final.max_used);
 }
 }  // namespace
 
@@ -172,6 +246,7 @@ int main(int argc, char** argv) {
         "PASS: shared LVGL renderer, RGB565 11200B strip, bounded flushes=%u pixels=%llu; repeated "
         "create/destroy stable_free=%zu\n",
         flushes, static_cast<unsigned long long>(transferred_pixels), stable_free);
+    CheckClock(display, screen, output);
     lv_display_delete(display);
     lv_deinit();
 }

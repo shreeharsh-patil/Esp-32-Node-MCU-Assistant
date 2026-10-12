@@ -182,7 +182,7 @@ export function createBackend(config, providerFactory = openGemini, options = {}
               await Promise.race([store.recentTurns(identity.id).catch(() => []), sleep(1200).then(() => [])]) : [];
             const provider = await providerFactory(runtime,
               content => { try { bridge.enqueue(content); journal?.observe(content); } catch { ws.close(1009, 'Reply exceeds bounds'); } },
-              () => ws.close(1011, 'Voice provider unavailable'), { signal: providerAbort.signal, memory });
+              () => ws.close(1011, 'Voice provider unavailable'), { signal: providerAbort.signal, memory, timezone: hello.timezone });
             if (closed || expired) { provider.close(); return; }
             bridge.provider = provider;
             bridge.sendJson({ type: 'hello', transport: 'websocket', session_id: sessionId,

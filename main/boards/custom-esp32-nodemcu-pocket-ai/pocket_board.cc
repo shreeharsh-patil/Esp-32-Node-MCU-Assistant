@@ -18,6 +18,7 @@
 #include "hands_free_policy.h"
 #include "pocket_audio_codec.h"
 #include "pocket_backend.h"
+#include "pocket_clock.h"
 #include "pocket_display.h"
 #include "pocket_wifi.h"
 #include "system_info.h"
@@ -95,6 +96,7 @@ public:
     }
     std::string GetCustomBackendUrl() const override { return pocket::BackendUrl(); }
     std::string GetCustomBackendToken() const override { return pocket::BackendToken(); }
+    std::string GetTimeZone() const override { return pocket::ClockTimezone(); }
     Display* GetDisplay() override {
         return display_ ? static_cast<Display*>(display_) : &fallback_;
     }
@@ -150,6 +152,8 @@ private:
     size_t command_length_ = 0;
 
     void StartTalk() {
+        if (display_)
+            display_->ShowClock(false);
         auto& app = Application::GetInstance();
         const auto state = app.GetDeviceState();
         if (state != kDeviceStateIdle && state != kDeviceStateSpeaking &&
@@ -280,6 +284,11 @@ private:
                      static_cast<unsigned>(esp_get_minimum_free_heap_size()),
                      audio_.output_volume());
             GetDisplay()->SetChatMessage("system", info);
+        } else if (strcmp(command, "clock") == 0 && display_) {
+            display_->ShowClock(true);
+        } else if (strncmp(command, "timezone ", 9) == 0) {
+            ESP_LOGI("PocketClock", "Timezone save %s; next voice session uses the new zone",
+                     pocket::SaveClockTimezone(command + 9) ? "OK" : "FAIL (unsupported zone)");
         } else if (strncmp(command, "face ", 5) == 0 && display_) {
             if (!display_->PreviewExpression(command + 5))
                 ESP_LOGW(TAG, "Face preview requires idle/setup and a known expression");
@@ -297,9 +306,10 @@ private:
 #endif
         else if (strcmp(command, "colors") == 0 && display_)
             display_->ColorTest(true);
-        else if (strcmp(command, "home") == 0 && display_)
+        else if (strcmp(command, "home") == 0 && display_) {
             display_->ColorTest(false);
-        else if (strncmp(command, "volume ", 7) == 0) {
+            display_->ShowClock(false);
+        } else if (strncmp(command, "volume ", 7) == 0) {
             char* end = nullptr;
             const long volume = std::strtol(command + 7, &end, 10);
             if (end == command + 7 || *end != '\0' || volume < 0 || volume > 100) {
@@ -350,7 +360,7 @@ private:
         } else
             ESP_LOGI(TAG,
                      "Commands: handsfree on/off start stop cancel setup diag info colors home "
-                     "face NAME mic "
+                     "clock timezone IANA_NAME face NAME mic "
                      "testaudio tone [long/loud] "
                      "volume N "
                      "wifi-reset CONFIRM factory-reset CONFIRM");

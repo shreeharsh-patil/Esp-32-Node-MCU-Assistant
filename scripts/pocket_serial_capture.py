@@ -78,7 +78,7 @@ def main():
     parser.add_argument('--reset', action='store_true')
     parser.add_argument('--volume', type=int, help='Set the speaker volume 0..100 before commands (writes only audio preference)')
     parser.add_argument('--command', action='append', default=[],
-                        choices=['diag', 'info', 'colors', 'home', 'mic', 'tone', 'tone-long', 'tone-loud', 'testaudio'])
+                        choices=['diag', 'info', 'colors', 'home', 'clock', 'mic', 'tone', 'tone-long', 'tone-loud', 'testaudio'])
     parser.add_argument('--output', required=True)
     parser.add_argument('--wav', type=Path, help='Export the last complete mic recording to WAV')
     parser.add_argument('--extract-only', action='store_true', help='Read --output as an existing log')

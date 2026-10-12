@@ -28,6 +28,7 @@ private:
         Command command;
         char ssid[33] = {}, password[65] = {};
         char backend_url[193] = {}, backend_token[129] = {};
+        char timezone[40] = {};
     };
     PocketDisplay* display_ = nullptr;
     NetworkEventCallback callback_;

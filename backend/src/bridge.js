@@ -1,3 +1,4 @@
+import { CLOCK_TIMEZONES } from './clock.js';
 import OpusScript from 'opusscript';
 import { setTimeout as sleep } from 'node:timers/promises';
 
@@ -18,7 +19,8 @@ export function validHello(message) {
   const audio = message?.audio_params;
   return message?.type === 'hello' && message.version === 1 &&
     message.transport === 'websocket' && audio?.format === 'opus' &&
-    audio.sample_rate === 16000 && audio.channels === 1 && audio.frame_duration === 60;
+    audio.sample_rate === 16000 && audio.channels === 1 && audio.frame_duration === 60 &&
+    (message.timezone === undefined || CLOCK_TIMEZONES.includes(message.timezone));
 }
 
 export class VoiceBridge {
@@ -44,6 +46,7 @@ export class VoiceBridge {
     this.lastProviderAudioAt = null;
     this.maxProviderGapMs = 0;
     this.startupMs = 0;
+    this.inputTranscript = '';
     this.inputWindow = Date.now();
     this.inputFrames = 0;
     this.worker = this.run();
@@ -170,8 +173,10 @@ export class VoiceBridge {
         const event = this.queue.shift();
         if (!event) continue;
         this.pendingBytes -= event.bytes;
-        if (event.kind === 'input') this.sendJson({ type: 'stt', text: Array.from(event.text).slice(0, TEXT_LIMIT).join('') });
-        else if (event.kind === 'output') {
+        if (event.kind === 'input') {
+          this.inputTranscript = Array.from(this.inputTranscript + event.text).slice(0, TEXT_LIMIT).join('');
+          this.sendJson({ type: 'stt', text: this.inputTranscript });
+        } else if (event.kind === 'output') {
           this.startReply();
           this.sendJson({ type: 'tts', state: 'sentence_start', text: Array.from(event.text).slice(0, TEXT_LIMIT).join('') });
         } else if (event.kind === 'audio') {
@@ -190,6 +195,7 @@ export class VoiceBridge {
           // Do not retain a view into a large provider buffer between chunks.
           this.pcm = Buffer.from(this.pcm);
         } else if (event.kind === 'complete') {
+          this.inputTranscript = '';
           if (this.pcm.length) {
             const padded = Buffer.alloc(FRAME_BYTES);
             this.pcm.copy(padded);
