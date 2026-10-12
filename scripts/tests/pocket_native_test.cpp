@@ -54,18 +54,6 @@ int main() {
     assert(loud > static_cast<int64_t>(26000) * 65536);
     assert(loud <= static_cast<int64_t>(26214) * 65536);
     assert(loud % 65536 == 0);
-    // Speech gets a useful boost, but even a full-scale sample stays under
-    // the same absolute speaker limit. Diagnostic tones keep their own gain.
-    previous = filtered = 0;
-    const int64_t voice_normal = pocket::ConvertSpeaker(10000, previous, filtered, 100);
-    previous = filtered = 0;
-    const int64_t voice_boosted =
-        pocket::ConvertSpeaker(10000, previous, filtered, 100, 0.80f, 2.0f);
-    assert(voice_boosted > voice_normal * 17 / 10);
-    previous = filtered = 0;
-    const int64_t voice_peak =
-        pocket::ConvertSpeaker(INT16_MAX, previous, filtered, 100, 0.80f, 2.0f);
-    assert(voice_peak <= static_cast<int64_t>(26214) * 65536);
     for (int volume : {-100, 0, 20, 100, 1000}) {
         previous = filtered = 0;
         for (int i = 0; i < 10000; ++i) {
@@ -77,6 +65,28 @@ int main() {
                 assert(output == 0);
         }
     }
+    // A loud voice block uses one linear gain: no flattened waveform peaks.
+    std::array<float, 128> voice{};
+    previous = filtered = 0;
+    float peak = 0, gain = 2.0f;
+    for (size_t i = 0; i < voice.size(); ++i) {
+        const auto sample = static_cast<int16_t>(32000 * std::sin(i * 6.2831853 * 440 / 16000));
+        voice[i] = pocket::FilterSpeaker(sample, previous, filtered);
+        peak = std::max(peak, std::abs(voice[i]));
+    }
+    const float limited_gain = pocket::VoiceBlockGain(peak, gain, 100, 128, 0.8f, 2.0f);
+    assert(limited_gain > 0.6f && limited_gain < 0.7f);
+    for (const float value : voice) {
+        const int64_t packed = pocket::PackSpeaker(value * limited_gain, 0.65f);
+        const float pcm = static_cast<float>(packed / 65536);
+        assert(std::abs(pcm) <= 21299);
+        assert(std::abs(pcm - value * limited_gain * 32767) < 1.1f);
+    }
+    const float released = pocket::VoiceBlockGain(0.1f, gain, 100, 128, 0.8f, 2.0f);
+    assert(released > limited_gain && released < limited_gain + 0.05f);
+    gain = 2.0f;
+    assert(std::abs(pocket::VoiceBlockGain(0.1f, gain, 100, 128, 0.8f, 2.0f) - 1.6f) < 0.001f);
+    assert(pocket::VoiceBlockGain(1.0f, gain, 0, 128, 0.8f, 2.0f) == 0);
     xiaozhi::WebsocketAudioFrame frame;
     std::array<uint8_t, 18> v2 = {0,    2,    0,    0, 0, 0, 0, 0,    0x12,
                                   0x34, 0x56, 0x78, 0, 0, 0, 2, 0xab, 0xcd};

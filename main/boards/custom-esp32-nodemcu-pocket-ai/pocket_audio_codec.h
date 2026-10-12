@@ -54,7 +54,9 @@ private:
     std::atomic<bool> fresh_capture_{false};
     std::atomic<uint32_t> playback_rms_{0}, playback_at_ms_{0};
     std::array<int32_t, kChunk * 2> rx_words_{}, tx_words_{};
+    std::array<float, kChunk> voice_samples_{};
     float mic_dc_ = 0, speaker_previous_ = 0, speaker_filtered_ = 0;
+    float speaker_gain_ = 2.0f;
     std::mutex output_mutex_;
     std::mutex input_mutex_;
     int WriteSamples(const int16_t* data, int samples, float output_gain, float voice_boost = 1.0f);

@@ -185,12 +185,27 @@ int PocketAudioCodec::WriteSamples(const int16_t* data, int samples, float outpu
         uint64_t squares = 0;
         uint64_t tx_squares = 0;
         uint32_t tx_peak = 0;
+        const bool voice = voice_boost > 1.0f;
+        const int volume = safe_volume_.load();
+        float block_peak = 0;
         for (int i = 0; i < frames; ++i) {
             const int64_t sample = data[done + i];
             squares += sample * sample;
+            if (voice) {
+                voice_samples_[i] =
+                    pocket::FilterSpeaker(data[done + i], speaker_previous_, speaker_filtered_);
+                block_peak = std::max(block_peak, std::abs(voice_samples_[i]));
+            }
+        }
+        const float gain = voice ? pocket::VoiceBlockGain(block_peak, speaker_gain_, volume, frames,
+                                                          output_gain, voice_boost)
+                                 : 1.0f;
+        for (int i = 0; i < frames; ++i) {
             const int32_t word =
-                pocket::ConvertSpeaker(data[done + i], speaker_previous_, speaker_filtered_,
-                                       safe_volume_.load(), output_gain, voice_boost);
+                voice ? pocket::PackSpeaker(voice_samples_[i] * gain,
+                                            std::clamp(output_gain, 0.0f, 0.65f))
+                      : pocket::ConvertSpeaker(data[done + i], speaker_previous_, speaker_filtered_,
+                                               volume, output_gain);
             tx_words_[i * 2] = tx_words_[i * 2 + 1] = word;
             const int64_t pcm = word / 65536;
             tx_squares += pcm * pcm;

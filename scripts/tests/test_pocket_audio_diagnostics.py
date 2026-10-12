@@ -239,6 +239,8 @@ public:
     float speaker_previous_=0, speaker_filtered_=0;
     std::mutex output_mutex_;
     std::array<int32_t, kChunk*2> tx_words_{};
+    std::array<float, kChunk> voice_samples_{};
+    float speaker_gain_=2.0f;
     int WriteSamples(const int16_t*, int, float, float=1.0f);
 };
 '''
@@ -269,6 +271,21 @@ int main() {
     assert(disabled.WriteSamples(input.data(), input.size(), 0.8f) == 0 && calls == 1);
     disabled.playback_=false;
     assert(disabled.WriteSamples(input.data(), input.size(), 0.8f) == 0 && calls == 1);
+    // Exercise the actual boosted voice branch, not just the math helper.
+    calls=0; written.clear(); steps={{ESP_OK,1024},{ESP_OK,256}};
+    for (size_t i=0; i<input.size(); ++i) input[i]=static_cast<int16_t>(32000*std::sin(i*6.2831853*440/16000));
+    PocketAudioCodec voice;
+    voice.safe_volume_=100;
+    assert(voice.WriteSamples(input.data(), input.size(), 0.8f, 2.0f) == 160);
+    assert(voice.tx_errors_ == 0 && voice.tx_peak_ <= 21299 && written.size() == sizeof(expected));
+    std::array<int32_t, 320> output{};
+    std::memcpy(output.data(), written.data(), written.size());
+    for (size_t i=0; i<input.size(); ++i) {
+        assert(output[2*i] == output[2*i+1]);
+        assert(std::abs(static_cast<int64_t>(output[2*i]) / 65536) <= 21299);
+    }
+    for (size_t i=0; i<32; ++i) assert(std::abs(voice.tx_words_[2*i]/65536.0f-
+        voice.voice_samples_[i]*voice.speaker_gain_*32767) < 1.1f);
 }
 '''
         with tempfile.TemporaryDirectory() as directory:
@@ -307,17 +324,17 @@ public:
     std::array<int32_t, 320> tx_words_{};
     uint32_t frames_=0, peak_=0, block_peak_=0;
     bool DiagnosticTone(bool extended=false, bool loud=false);
-    int Write(const int16_t* data, int samples);
     void PrintSignalExpectations() {}
     void EnableOutput(bool enabled) { playback_.store(enabled); }
     uint32_t TxPeak() const { return block_peak_; }
     int WriteSamples(const int16_t* data, int samples, float output_gain, float voice_boost=1.0f) {
         assert(playback_.load());
+        assert(voice_boost == 1.0f);
         if (fail_) return 0;
         block_peak_=0;
         for (int i=0; i<samples; ++i) {
             const int32_t word=pocket::ConvertSpeaker(data[i], speaker_previous_,
-                                                     speaker_filtered_, safe_volume_.load(), output_gain, voice_boost);
+                                                     speaker_filtered_, safe_volume_.load(), output_gain);
             tx_words_[i*2]=tx_words_[i*2+1]=word;
             const auto peak=static_cast<uint32_t>(std::abs(word / 65536));
             assert(peak <= static_cast<uint32_t>(output_gain * 32767));
@@ -348,17 +365,6 @@ int main() {
     assert(loud_tone.frames_ == 81280 && loud_tone.peak_ >= 19200 && loud_tone.peak_ <= 19400);
     assert(loud_tone.peak_ >= 9.9 * long_tone.peak_);
     assert(loud_tone.safe_volume_ == 59 && !loud_tone.playback_ && !loud_tone.diagnostic_playback_);
-    loud_tone.safe_volume_=100;
-    loud_tone.playback_=true;
-    loud_tone.peak_=0;
-    const std::array<int16_t, 4> full_scale={32767,-32768,32767,-32768};
-    assert(loud_tone.Write(full_scale.data(), full_scale.size()) == 4);
-    assert(loud_tone.peak_ >= 26000 && loud_tone.peak_ <= 26214);
-    // Restored volume still controls normal playback, including mute.
-    loud_tone.safe_volume_=0;
-    loud_tone.peak_=0;
-    assert(loud_tone.Write(full_scale.data(), full_scale.size()) == 4);
-    assert(loud_tone.peak_ == 0);
     PocketAudioCodec failed;
     failed.fail_=true;
     assert(!failed.DiagnosticTone(false, true));
@@ -367,9 +373,7 @@ int main() {
 '''
         with tempfile.TemporaryDirectory() as directory:
             cpp, exe = Path(directory) / 'tone.cpp', Path(directory) / 'tone.exe'
-            write_start = source.index('int PocketAudioCodec::Write(')
-            write_end = source.index('\nint PocketAudioCodec::WriteSamples(', write_start)
-            cpp.write_text(fixture + source[write_start:write_end] + source[start:end] + checks)
+            cpp.write_text(fixture + source[start:end] + checks)
             subprocess.run([compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror',
                             '-I', str(ROOT / 'main/boards/custom-esp32-nodemcu-pocket-ai'),
                             str(cpp), '-o', str(exe)], check=True)
