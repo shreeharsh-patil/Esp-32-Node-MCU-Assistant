@@ -126,10 +126,10 @@ jobs:
         run: |
           set -euo pipefail
           TAG=v0.1.0-preview.2
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" release-assets/* --clobber
-            gh release edit "$TAG" --title "ESP32 NodeMCU Firmware v0.1.0 Preview 2" --prerelease --notes-file release-notes.md
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "ESP32 NodeMCU Firmware v0.1.0 Preview 2" --prerelease --notes-file release-notes.md
           else
-            gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --prerelease --title "ESP32 NodeMCU Firmware v0.1.0 Preview 2" --notes-file release-notes.md
+            gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY" --prerelease --title "ESP32 NodeMCU Firmware v0.1.0 Preview 2" --notes-file release-notes.md
           fi
-          gh release view "$TAG" --json url,isPrerelease,assets
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,isPrerelease,assets
