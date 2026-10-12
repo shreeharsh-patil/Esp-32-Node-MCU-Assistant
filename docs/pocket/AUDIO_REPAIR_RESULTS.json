@@ -1,0 +1,627 @@
+{
+  "date": "2026-10-11",
+  "repository": "https://github.com/shreeharsh-patil/Esp-32-Node-MCU-Assistant",
+  "base_main_commit": "c2f9b541d33f52f8d6b542f8424a7bd6ca972959",
+  "branch": "repair/pocket-audio-diagnostics",
+  "device_flashed_for_repair": true,
+  "credentials_erased": false,
+  "build_source_sha256": {
+    "main/audio/audio_service.cc": "2f088b4bc31c05275f0bf8bc6bdd5944828180ef23352eadd9e9cf7d439857b7",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "0e7bb00c49bbacc1b2da3052e2366a54dc57d673f5298582adec219163901443",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "043761c3e696a8cac5013bfbd63f3a9b127041cc4001ffcbd5d547d8db5f5c9c",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_board.cc": "5a88f6a569a01f0252ff209e428e0763fad0d5e51653e8a20b5bb9521b9c4a3d",
+    "scripts/pocket_serial_capture.py": "4c6760287e0c06e5f79daef29032d3d9c7b7678e8cfa0cc8ec5ef3679ae75066",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "c5753aa376d82cb978ac6057260e37be0f79c55547e09711972ec4f194ddcd9e",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_wifi.cc": "527981f44a6fbd1755e06fa3e4b626cd64e156568d45f291426c5f49660aed92",
+    "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_wifi_policy.h": "aca5fd65778554c3d9b0c0d6ef156896d849aa7a989cdc9da7c281db066fa1dd"
+  },
+  "validation": {
+    "host_tests": {
+      "result": "PASS",
+      "tests": 113,
+      "skipped": 0,
+      "log": "pocket-audio-voice80-host-tests.log",
+      "runner": "scripts/pocket_host_tests.py (Windows portable runner, UTF-8)"
+    },
+    "backend_tests": {
+      "result": "PASS",
+      "tests": 30,
+      "skipped": 0,
+      "log": "pocket-audio-backend-tests.log",
+      "limitation": "Local real Opus and mock provider tests; not deployed Gemini conversation"
+    },
+    "representative_build": {
+      "result": "PASS",
+      "board": "bread-compact-esp32-lcd",
+      "idf": "v6.1",
+      "log": "pocket-audio-build-regression.log"
+    },
+    "firmware": {
+      "diagnostics": {
+        "result": "PASS",
+        "image": "pocket-xiaozhi-esp32-diagnostics.bin",
+        "bytes": 2230064,
+        "sha256": "d75fe9828cca94dce42ba32a79378b9b413bbc60b9bf49ddf2b62c5d56af6a72",
+        "idf": "v6.1",
+        "app_bytes": 2164528,
+        "factory_partition_bytes": 4128768,
+        "physical_acceptance": "NOT YET VERIFIED",
+        "components": {
+          "diagnostics/bootloader.bin": {
+            "bytes": 20064,
+            "sha256": "5a8a16c38ce1ed82fbbef5332fd1e9bcb9a1420b682124610ea80a3355284f59"
+          },
+          "diagnostics/partition-table.bin": {
+            "bytes": 3072,
+            "sha256": "c9a826e85500d14d1854ce78e47452d4614a1be371bbd056278d2cb3398fbbfd"
+          },
+          "diagnostics/xiaozhi.bin": {
+            "bytes": 2164528,
+            "sha256": "6e8bb33560f0c9224dd368c95f7dc6782e8f5c8cbed502d7c0e36133e3ef95d3"
+          }
+        },
+        "log": "pocket-audio-voice80-build-diagnostics.log"
+      },
+      "conversation": {
+        "result": "PASS",
+        "image": "pocket-xiaozhi-esp32.bin",
+        "bytes": 2245248,
+        "sha256": "53dc69b4d017f50f4a8989bf0b41689f296cd22da96c59007eaa193f25b09d75",
+        "idf": "v6.1",
+        "app_bytes": 2179712,
+        "factory_partition_bytes": 4128768,
+        "physical_acceptance": "NOT YET VERIFIED",
+        "components": {
+          "conversation/bootloader.bin": {
+            "bytes": 20064,
+            "sha256": "5a8a16c38ce1ed82fbbef5332fd1e9bcb9a1420b682124610ea80a3355284f59"
+          },
+          "conversation/partition-table.bin": {
+            "bytes": 3072,
+            "sha256": "c9a826e85500d14d1854ce78e47452d4614a1be371bbd056278d2cb3398fbbfd"
+          },
+          "conversation/xiaozhi.bin": {
+            "bytes": 2179712,
+            "sha256": "8e7166e5c021b0a4b3c495d0e34dbc2f8b9a45140db7f04102c622ae80352c0c"
+          }
+        },
+        "log": "pocket-audio-voice80-build-conversation.log"
+      }
+    }
+  },
+  "installed_device_evidence": {
+    "port": "COM4",
+    "firmware": "Older installed v2.5.1 / IDF v6.1; repaired image not installed",
+    "sd": "Open",
+    "multimeter_available": false,
+    "digital_tone": {
+      "result": "PASS",
+      "frames": 1920,
+      "tx_errors": 0
+    },
+    "audible_tone": {
+      "result": "FAIL",
+      "observation": "Owner reported No sound"
+    },
+    "free_internal_heap_bytes": 56524,
+    "minimum_internal_heap_bytes": 54388,
+    "logs": [
+      "docs/pocket/AUDIO_REPAIR_INSTALLED_DIAG.log",
+      "docs/pocket/AUDIO_REPAIR_INSTALLED_TONE.log"
+    ]
+  },
+  "historical_capture": {
+    "result": "FAIL",
+    "date": "2026-10-09",
+    "source": "docs/pocket/AUDIO_RETEST_RESULTS.json",
+    "samples": 111360,
+    "active_dma_overruns": 12,
+    "clean_run_overruns": 2,
+    "speech_intelligibility": "NOT YET VERIFIED"
+  },
+  "physical_acceptance": {
+    "repaired_firmware_initialization": "PASS",
+    "five_second_microphone_capture": "PASS",
+    "microphone_speech_intelligibility": "PASS",
+    "zero_active_dma_overruns": "PASS",
+    "repaired_tone_digital_output": "PASS",
+    "amplifier_vin": "NOT YET VERIFIED",
+    "common_ground_continuity": "NOT YET VERIFIED",
+    "sd_mode_bias": "NOT YET VERIFIED",
+    "physical_i2s_clocks_and_data": "NOT YET VERIFIED",
+    "differential_amplifier_audio": "NOT YET VERIFIED",
+    "speaker_continuity": "NOT YET VERIFIED",
+    "repaired_audible_output": "PASS for latest tone: owner confirmed clearly audible for five seconds after checking joints; historical faint/silent trials retained",
+    "normal_voice_audible_replay": "FAIL: No speech heard at volume 80",
+    "wifi_connection": "NOT YET VERIFIED",
+    "gemini_conversation_and_resume": "NOT YET VERIFIED",
+    "runtime_heap_and_stack_margins": "NOT YET VERIFIED",
+    "offline_runtime_heap_and_stack_short_runs": "PASS",
+    "prolonged_conversation_dma_stability": "NOT YET VERIFIED"
+  },
+  "conversation_device_flash": {
+    "result": "PASS",
+    "port": "COM4",
+    "firmware_sha256": "3b732045e7326b587ae08ff3fa8d56f495044d48aba95d99800225d1ea5704ca",
+    "component_hashes_verified": true,
+    "nvs_preservation": {
+      "result": "PASS",
+      "bytes": 24576,
+      "before_after_match": "Byte-for-byte"
+    },
+    "credential_erase": false,
+    "log": "docs/pocket/AUDIO_REPAIR_BACKEND_CONVERSATION_FLASH.log",
+    "setup_ap_password": "Shreeharsh1757",
+    "note": "Fixed password appears in published firmware; nearby users can open the setup portal while it is active.",
+    "latest_flash_log": "docs/pocket/AUDIO_REPAIR_FIXED_AP_FLASH.log"
+  },
+  "hosted_backend": {
+    "url": "https://esp-32-node-mcu-assistant.vercel.app",
+    "health": {
+      "status": "PASS",
+      "http_status": 200,
+      "configured": true,
+      "checked_at": "2026-10-11"
+    },
+    "wifi_provisioning": "NOT YET VERIFIED",
+    "gemini_voice_conversation": "NOT YET VERIFIED"
+  },
+  "speaker_root_cause": "Software attenuation contributed to insufficient test level. The owner confirmed a clear five-second tone with 80% digital gain/cap, PCM16 peak 19244 and zero TX errors, including the latest joint-check retest. Earlier silent/faint trials remain unexplained; supply, SD bias and continuity are unmeasured. The owner-approved higher normal gain is now installed and runtime volume is 80. Initial spoken replay was not heard; latest stronger-input replay listening result remains unconfirmed as the owner requested moving to a hosted backend test.",
+  "microphone_root_cause": "Confirmed diagnostic queue-mutex blocking and stale idle DMA corrected. Repaired offline image exported two complete five-second recordings with valid CRC32 and zero active DMA drops/read errors. Owner confirmed clear recognizable words from computer WAV playback. Prolonged Wi-Fi/Gemini capture stability remains unverified.",
+  "exact_amplifier": {
+    "vendor": "SmartElex",
+    "retailer_sku": "TIFCC0264",
+    "url": "https://robocraze.com/products/smartelex-max98357a-i2s-audio-breakout-amplifier-for-raspberry-pi-and-microcontrollers",
+    "sd_circuit": "NOT YET VERIFIED: retailer has no schematic; branded guide conflicts with bare chip datasheet"
+  },
+  "approved_diagnostics_retest": {
+    "date": "2026-10-11",
+    "authorization": "Owner replied flash",
+    "port": "COM4",
+    "firmware_sha256": "4b863e6a77b503239065b22270fdfb242f525e6822269e9a04d8abc477aab919",
+    "chip": "ESP32-D0WD-V3 revision 3.1",
+    "flash_bytes": 4194304,
+    "flash": "PASS",
+    "component_flash_hashes_verified": true,
+    "nvs_preservation": {
+      "result": "PASS",
+      "offset": "0x9000",
+      "bytes": 24576,
+      "before_after_match": "Byte-for-byte",
+      "backup": "Private local ignored backups; not included in PR"
+    },
+    "initialization": "PASS",
+    "network_cloud": "Disabled by diagnostics firmware",
+    "digital_tone": {
+      "result": "PASS",
+      "frames": 6080,
+      "tone_frames": 4800,
+      "trailing_silence_frames": 1280,
+      "tx_errors": 0,
+      "post_gain_pcm16_peak": 120,
+      "example_left_word": "0xffca0000",
+      "example_right_word": "0xffca0000",
+      "example_signed_pcm16": -54
+    },
+    "audible_tone": {
+      "result": "FAIL",
+      "owner_observation": "No sound",
+      "sd": "Open"
+    },
+    "owner_wiring_confirmation": {
+      "amplifier_power": "ESP32 VIN",
+      "speaker": "SPK+ and SPK- only, neither grounded",
+      "voltage_and_continuity_measured": false
+    },
+    "recordings": {
+      "environment_baseline": {
+        "frames": 80000,
+        "rx_errors": 0,
+        "overruns": 0,
+        "clipped": 116,
+        "clipping_percent": 0.14,
+        "rms": 2459.46,
+        "peak": 32768,
+        "result": "PASS",
+        "crc32_valid": true,
+        "pcm_sha256": "51b129a18b8b8711fed83c238038dea4072bf573fb3ba857d900c4d365ac12fb",
+        "log": "docs/pocket/AUDIO_REPAIR_MIC_BASELINE.log",
+        "crc32": "210c9933"
+      },
+      "spoken_phrase": {
+        "frames": 80000,
+        "rx_errors": 0,
+        "overruns": 0,
+        "clipped": 0,
+        "clipping_percent": 0.0,
+        "rms": 913.66,
+        "peak": 4546,
+        "result": "PASS",
+        "crc32_valid": true,
+        "pcm_sha256": "c6736ad78bd7eeaa948eba0390f234f4b72d9a013072cb29fe0747891aff4c20",
+        "log": "docs/pocket/AUDIO_REPAIR_MIC_SPEECH.log",
+        "crc32": "d9ddb34c"
+      }
+    },
+    "speech_intelligibility": {
+      "result": "PASS",
+      "owner_observation": "Clear recognizable words",
+      "playback": "Computer playback of independently exported spoken WAV"
+    },
+    "opus_diagnostic_polling": {
+      "result": "PASS",
+      "captured_frames": 27840,
+      "replay_frames": 26880,
+      "added_active_dma_overruns": 0,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "diagnostic_commands_during_capture": 2,
+      "audible_replay": "NOT YET VERIFIED",
+      "limitation": "Short offline run; not prolonged Wi-Fi/Gemini stability"
+    },
+    "memory": {
+      "startup_free_internal_bytes": 112464,
+      "after_opus_free_internal_bytes": 112192,
+      "minimum_internal_bytes": 97636,
+      "minimum_remaining_stack_bytes": {
+        "audio_input": 3012,
+        "audio_output": 972,
+        "opus_codec": 4708,
+        "pocket_control": 1768
+      }
+    },
+    "logs": [
+      "docs/pocket/AUDIO_REPAIR_DIAGNOSTICS_BOOT.log",
+      "docs/pocket/AUDIO_REPAIR_DIAGNOSTICS_TONE.log",
+      "docs/pocket/AUDIO_REPAIR_MIC_BASELINE.log",
+      "docs/pocket/AUDIO_REPAIR_MIC_SPEECH.log",
+      "docs/pocket/AUDIO_REPAIR_OPUS_STRESS.log"
+    ]
+  },
+  "sd_ground_trial": {
+    "date": "2026-10-11",
+    "authorization": "Owner requested lets try, then confirmed done after power-off wiring instructions",
+    "reported_sd_connection": "Amplifier SD to amplifier GND",
+    "owner_gain_clarification": "GAIN open",
+    "digital_tone": {
+      "result": "PASS",
+      "frames": 6080,
+      "post_gain_pcm16_peak": 120,
+      "example_left_word": "0xffca0000",
+      "example_right_word": "0xffca0000",
+      "tx_errors": 0
+    },
+    "audible_tone": {
+      "result": "FAIL",
+      "owner_observation": "No sound"
+    },
+    "log": "docs/pocket/AUDIO_REPAIR_SD_GND_TONE.log",
+    "interpretation": "Inconclusive for amplifier failure: direct chip SD_MODE grounded is shutdown; branded guide says opposite, actual breakout circuit not verified.",
+    "restoration": "Owner instructed to remove SD-ground link with USB disconnected; restoration not yet confirmed",
+    "remaining_checks": [
+      "SD circuit traces not established by later uncovered photos; one amplifier IC and passives visible",
+      "VIN-GND voltage",
+      "SD-GND bias voltage",
+      "Amplifier-side clocks/data",
+      "Speaker continuity and differential output"
+    ]
+  },
+  "extended_tone_update": {
+    "owner_request": "Increase the volume and try again a longer duration",
+    "command": "tone long",
+    "capture_argument": "--command tone-long",
+    "duration_ms": 5000,
+    "frequency_hz": 440,
+    "temporary_volume": 100,
+    "source_pcm16_peak": 24000,
+    "approximate_post_gain_pcm16_peak": 1920,
+    "amplitude_ratio_to_short_tone": 16,
+    "tone_frames": 80000,
+    "total_frames_with_trailing_silence": 81280,
+    "regression": "PASS: duration, attenuation, cap and state restoration including failed writes",
+    "built_variants": [
+      "diagnostics",
+      "conversation"
+    ],
+    "flashed": true,
+    "authorization": "Owner requested start the 5 sec thing after being told the new test required installing updated diagnostics",
+    "component_flash_hashes_verified": true,
+    "nvs_preservation": {
+      "result": "PASS",
+      "bytes": 24576,
+      "before_after_match": "Byte-for-byte",
+      "backups": "Private local ignored backups"
+    },
+    "digital_playback": {
+      "result": "PASS",
+      "duration_ms": 5000,
+      "frames": 81280,
+      "post_gain_pcm16_peak": 1924,
+      "left_word": "0xfc920000",
+      "right_word": "0xfc920000",
+      "example_pcm16": -878,
+      "tx_errors": 0
+    },
+    "audible_playback": {
+      "result": "NOT YET VERIFIED",
+      "owner_observation": "A buzz sound but it was very light",
+      "some_sound_reported": true,
+      "clear_tone_and_speech_volume_confirmed": false
+    },
+    "physical_acceptance": "NOT YET VERIFIED: very light buzz reported; clear tone and useful speech volume not established",
+    "logs": [
+      "docs/pocket/AUDIO_REPAIR_LONG_TONE_FLASH.log",
+      "docs/pocket/AUDIO_REPAIR_LONG_TONE_PLAYBACK.log"
+    ],
+    "firmware_sha256": "bb1b9e2742f009580d2b76153d0731953ce775a0915daaa9b7e359d59249060e"
+  },
+  "amplifier_3v3_power_trial": {
+    "reported_power_source": "ESP32 3V3 after VIN removal; unmeasured",
+    "instructed_sd": "Open",
+    "instructed_gain": "Open",
+    "digital_tone": {
+      "result": "PASS",
+      "frames": 6080,
+      "tx_errors": 0,
+      "post_gain_pcm16_peak": 120
+    },
+    "audible_tone": {
+      "result": "NOT YET VERIFIED",
+      "owner_observation": "Owner requested increased volume/duration; listening result not supplied"
+    },
+    "log": "docs/pocket/AUDIO_REPAIR_3V3_POWER_TONE.log"
+  },
+  "loud_tone_update": {
+    "owner_request": "Make the speaker loud; make it 80",
+    "command": "tone loud",
+    "capture_argument": "--command tone-loud",
+    "digital_gain_and_cap_percent": 80,
+    "normal_playback_cap_percent": 8,
+    "duration_ms": 5000,
+    "frequency_hz": 440,
+    "source_pcm16_peak": 24000,
+    "approximate_post_gain_pcm16_peak": 19240,
+    "amplitude_ratio_to_prior_long_tone": 10,
+    "total_frames": 81280,
+    "flashed": true,
+    "physical_acceptance": "PASS: owner heard clear tone on requested repeat; normal speech playback remains pending",
+    "firmware_sha256": "9fe5886715702764bbb447a28f56e1d77f8d062f8443c6b76d9a25aa93a367a0",
+    "authorization": "Owner requested louder playback and specified make it 80 during the authorized diagnostics flash/test session",
+    "component_flash_hashes_verified": true,
+    "nvs_preservation": {
+      "result": "PASS",
+      "before_after_match": "Byte-for-byte"
+    },
+    "digital_playback": {
+      "result": "PASS",
+      "duration_ms": 5000,
+      "frames": 81280,
+      "tx_errors": 0,
+      "post_gain_pcm16_peak": 19244
+    },
+    "audible_playback": {
+      "result": "FAIL",
+      "owner_observation": "No sound on first 80% trial"
+    },
+    "repeat": {
+      "authorization": "Owner requested run that test again of sound",
+      "digital_playback": {
+        "result": "PASS",
+        "duration_ms": 5000,
+        "added_frames": 81280,
+        "cumulative_frames": 162560,
+        "post_gain_pcm16_peak": 19244,
+        "left_word": "0xddb20000",
+        "right_word": "0xddb20000",
+        "tx_errors": 0
+      },
+      "audible_playback": {
+        "result": "PASS",
+        "owner_observation": "Clear tone"
+      },
+      "log": "docs/pocket/AUDIO_REPAIR_80_TONE_REPEAT1.log"
+    },
+    "logs": [
+      "docs/pocket/AUDIO_REPAIR_80_TONE_FLASH.log",
+      "docs/pocket/AUDIO_REPAIR_80_TONE_PLAYBACK.log"
+    ]
+  },
+  "live_voice_repair": {
+    "observed_faults": [
+      "Live reply began and the device WebSocket disconnected before the spoken answer finished",
+      "Later owner prompts yielded no response; serial logs showed Listening and microphone capture but no reply",
+      "Owner reported speech still too quiet at saved volume 100 before the corrected boosted image"
+    ],
+    "changes": [
+      "Normal speech output gets a 2x boost with a soft knee under the existing 80% peak cap",
+      "Backend Opus sender starts with 180 ms of buffer lead and paces subsequent frames",
+      "Backend delays timed renewal while a reply is active, within a 25-second bound",
+      "Periodic diagnostics output is disabled during conversation firmware operation"
+    ],
+    "conversation_firmware_sha256": "53dc69b4d017f50f4a8989bf0b41689f296cd22da96c59007eaa193f25b09d75",
+    "conversation_firmware_flash": "PASS: corrected release image verified and flashed to COM4; app flash hash verified",
+    "nvs_preservation": "PASS: all 24576 bytes identical before and after corrected flash",
+    "post_flash_boot": "PASS: Wi-Fi connected, WebSocket handshake completed, and device entered Listening",
+    "tests": "34 backend tests and 113 host firmware tests pass; conversation firmware built with ESP-IDF 6.1",
+    "live_backend_deployment": "PASS: production deployment dpl_95M54yvM9ZZy37LTSpBcDX4hWt1a promoted to esp-32-node-mcu-assistant.vercel.app; /health HTTP 200 configured:true",
+    "speech_audibility_and_reply_completion": "PASS for two short live turns: Hello and Open YouTube recognized; full replies clearly audible per owner; state returned to Listening after each; prolonged stability unverified",
+    "live_two_turn_log": "docs/pocket/AUDIO_REPAIR_LIVE_TWO_TURNS.log",
+    "conversation_memory": "DEPLOYED BUT INACTIVE: bounded encrypted per-device history requires missing production DATABASE_URL and SETTINGS_ENCRYPTION_KEY, plus dashboard history enabled",
+    "current_web_search": "DEPLOYED BUT INACTIVE: optional comma-separated FIRECRAWL_API_KEYS absent in production; live search unverified",
+    "current_time": "DEPLOYED BUT UNVERIFIED: direct Live tool returns UTC and India Standard Time without web search",
+    "youtube_on_esp32": "UNSUPPORTED: device lacks browser/video player; YouTube audio separation is prohibited by YouTube API policies"
+  },
+  "normal_voice_update": {
+    "authorization": "Owner selected Apply to voice playback (Recommended) and testing spoken replay",
+    "normal_output_gain_and_cap_percent": 80,
+    "default_volume": 80,
+    "requested_runtime_volume": 80,
+    "quiet_tones_gain_and_cap_percent": 8,
+    "saved_preferences_retained": true,
+    "flashed": true,
+    "component_flash_hashes_verified": true,
+    "nvs_preservation_across_flash": "PASS: 24576 bytes matched before and after flash",
+    "preference_update_after_flash": "Only audio/output_volume intentionally set to 80; firmware log confirmed",
+    "speech_playback": "NOT YET VERIFIED on latest repeat; initial replay FAIL: No speech heard",
+    "digital_speech_replay": {
+      "captured_frames": 27840,
+      "playback_frames": 26880,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_dma_drops": 0,
+      "last_block_tx_pcm16_rms": 513,
+      "last_block_tx_pcm16_peak": 1081,
+      "remaining_test_packets": 1,
+      "limitation": "Last-block levels are not recording-wide peak; a late test packet blocked the subsequent idle-only tone command"
+    },
+    "logs": [
+      "docs/pocket/AUDIO_REPAIR_VOICE80_FLASH.log",
+      "docs/pocket/AUDIO_REPAIR_VOICE80_VOLUME.log",
+      "docs/pocket/AUDIO_REPAIR_VOICE80_REPLAY.log",
+      "docs/pocket/AUDIO_REPAIR_VOICE80_TONE_CONTROL.log"
+    ],
+    "tone_control_after_restart": {
+      "frames": 81280,
+      "post_gain_pcm16_peak": 19244,
+      "tx_errors": 0,
+      "owner_observation": "Faint buzz or click",
+      "log": "docs/pocket/AUDIO_REPAIR_VOICE80_TONE_CONTROL_RESET.log"
+    },
+    "connection_check": "Owner unplugged USB and reported speaker/power/GND joints firm and ready",
+    "tone_after_connection_check": {
+      "added_frames": 81280,
+      "post_gain_pcm16_peak": 19244,
+      "tx_errors": 0,
+      "owner_observation": "Horn-like sound, clearly audible for five seconds",
+      "log": "docs/pocket/AUDIO_REPAIR_VOICE80_TONE_JOINT_RETEST.log"
+    },
+    "close_mic_trial": {
+      "result": "INVALID for spoken acceptance: owner did not speak and requested repeat",
+      "captured_frames": 27840,
+      "playback_frames": 26880,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_dma_drops": 0,
+      "log": "docs/pocket/AUDIO_REPAIR_VOICE80_REPLAY_CLOSE.log"
+    },
+    "spoken_repeat": {
+      "captured_frames": 27840,
+      "playback_frames": 26880,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_dma_drops": 0,
+      "last_block_tx_pcm16_rms": 1218,
+      "last_block_tx_pcm16_peak": 2807,
+      "audible_acceptance": "NOT YET VERIFIED: owner requested moving to hosted backend test",
+      "log": "docs/pocket/AUDIO_REPAIR_VOICE80_REPLAY_READY_REPEAT.log"
+    },
+    "firmware_sha256": "53dc69b4d017f50f4a8989bf0b41689f296cd22da96c59007eaa193f25b09d75"
+  },
+  "reliability_audit": {
+    "date": "2026-10-12",
+    "source_commits": [
+      "2866cd6",
+      "7dcd68a",
+      "30039db",
+      "c90ed35"
+    ],
+    "source_sha256": {
+      "main/application.cc": "4f1118fd7155aeede6f8f997e6d9dda5db75a2fb928284fe6313898ca360f128",
+      "main/application.h": "8908b915d127c8df17f814bb8003b35c384593817b3a0c23340d99f5a7fa5571",
+      "main/audio/audio_service.cc": "bba57ac8a0eefa29ea4c11e763d5d4c72244d2b180d256acbfc97fee758150fc",
+      "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "adb1f8585401e5d4b790c9e14ed48ffff0fc231d7b235b10334563a1748b46e5",
+      "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "1598876aacb28794df1a953eff28a6bb14574c4a34b7bcae0a49f5dfac238d62",
+      "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "65b095b56dc274db9fe35280e2d1584b72dd2e66bfad3c79e61d59720ca1a3dc",
+      "backend/src/bridge.js": "d9ca938aeb969acff7172ba77f3a113fd92ace30e08aec58291ff34514889c14",
+      "backend/src/gemini.js": "05c42a20b7e5315c07a681ebb0b4566ccd0f357125015cab1a08bfb29b73d1f4",
+      "backend/src/server.js": "16c6c58413026446437a6e2e8435a46de23b88c328989a682433629bdafaf188",
+      "backend/vercel.json": "9db188f259fc79771a01d575ae98782ebf64c02230c4eb338f751ab8fe0e904f"
+    },
+    "host_tests": 117,
+    "backend_tests": 41,
+    "representative_build": "PASS: bread-compact-esp32-lcd / ESP-IDF 6.1",
+    "firmware": {
+      "conversation": {
+        "build": "PASS: ESP-IDF 6.1",
+        "image": "pocket-xiaozhi-esp32.bin",
+        "bytes": 2240096,
+        "app_bytes": 2174560,
+        "sha256": "3578396fe350cb83c4732834269d90a6a28e6633c04e3f128256b2862a232d51"
+      },
+      "diagnostics": {
+        "build": "PASS: ESP-IDF 6.1",
+        "image": "pocket-xiaozhi-esp32-diagnostics.bin",
+        "bytes": 2224928,
+        "app_bytes": 2159392,
+        "sha256": "a03d65636684e91ba824a2f237ede34cceb0b241021fb2f1f0c04f048d551505"
+      }
+    },
+    "flash": "PASS: COM4 bootloader, partition table and conversation app hashes verified",
+    "nvs_preservation": "PASS: 24576 bytes match before/after flash; no erase-all",
+    "post_flash": {
+      "state": "listening",
+      "internal_free": 46660,
+      "minimum": 22396,
+      "largest": 36864,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_capture_overruns": 0,
+      "mic_clipped_total": 0
+    },
+    "deployment": "PASS: dpl_2dg6DiB87Uzn18QcRmoGKiAzF47C READY, promoted to esp-32-node-mcu-assistant.vercel.app; function region bom1; health configured=true",
+    "latency": {
+      "scope": "Two generated host-speech trials over production, not ESP32 microphone/speaker acceptance or a response-time guarantee",
+      "region": "bom1",
+      "silence_duration_ms": 500,
+      "prefix_padding_ms": 300,
+      "playback_lead_ms": 360,
+      "maximum_startup_buffer_wait_ms": 120,
+      "trials": [
+        {
+          "test": "Synthetic host speech over production, not physical ESP32 acceptance",
+          "frames": 37,
+          "decodedSamples": 35520,
+          "maxPacketGapMs": 84,
+          "recognizedSpeech": true,
+          "replyText": true,
+          "setupMs": 4902,
+          "firstAudioAfterSpeechMs": 1651,
+          "replyDurationMs": 2220
+        },
+        {
+          "test": "Synthetic host speech over production, not physical ESP32 acceptance",
+          "frames": 55,
+          "decodedSamples": 52800,
+          "maxPacketGapMs": 341,
+          "recognizedSpeech": true,
+          "replyText": true,
+          "setupMs": 1626,
+          "firstAudioAfterSpeechMs": 1459,
+          "replyDurationMs": 3300
+        }
+      ]
+    },
+    "voice_limiter": {
+      "quiet_voice_gain": "Same volume preference and boost; no sample waveshaping",
+      "voice_peak_ceiling_percent": 65,
+      "gain_release_ms_approximate": 200,
+      "block_frames": 128,
+      "diagnostic_levels": "Preserved"
+    },
+    "latest_physical_acceptance": "PENDING: owner will test later; earlier two short replies were audible, but owner later reported both gaps and distortion",
+    "hosted_memory_search": "PENDING: Production still needs DATABASE_URL, SETTINGS_ENCRYPTION_KEY, FIRECRAWL_API_KEYS",
+    "later_runtime_snapshot": {
+      "uptime_ms": 397505,
+      "state": "listening",
+      "internal_free": 47716,
+      "minimum": 22396,
+      "largest": 43008,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_capture_overruns": 1,
+      "mic_clipped_total": 34,
+      "output_frames": 102720,
+      "limitation": "One capture buffer overflow was observed after the initial zero-overflow snapshot. Extended capture stability and acoustic output remain unverified; successful digital writes do not prove sound quality."
+    }
+  }
+}

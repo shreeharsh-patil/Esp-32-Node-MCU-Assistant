@@ -60,10 +60,30 @@ Optional PTT uses a 35 ms debounce, a 2.5-second startup delay, and requires a r
 button before arming. GPIO0 is never driven. Release BOOT before power-on/reset
 and while flashing. Maximum button/serial listening duration is 30 seconds.
 
-The output starts at 20% of a quadratic software volume control. An absolute
-8% full-scale peak cap applies at every requested volume, including MCP requests
+Normal output defaults to 80% of a quadratic software volume control, with saved
+volume preferences retained. An absolute 80% full-scale peak cap applies, including MCP requests
 for 100%. This is a digital limit, not a measured speaker wattage guarantee.
+Spoken audio has a twofold software boost with a soft peak limiter under that
+same cap. The owner has set the saved volume to 100 after finding 80 too quiet.
 There is no automatic test tone at boot.
+
+Audio repair diagnostics: `tone` uses a 300 ms, 440 Hz waveform at a fixed,
+temporary low gain, then restores the saved volume. `tone long` plays for five
+seconds with approximately 16 times the PCM amplitude, still through the same
+absolute output cap. Both tests restore volume without writing settings.
+The capture utility accepts `--command tone-long` for the extended test.
+The owner-requested `tone loud` uses an 80% digital gain/cap for five seconds,
+approximately ten times the sample amplitude of `tone long`. The waveform peaks
+around 59% of PCM full scale; the 80% cap is not a measured loudness percentage.
+After clear tone playback, the owner also approved this higher gain for normal
+voice playback. The short and long quiet test commands keep their 8% cap.
+Test tones do not persist volume changes or run automatically at boot.
+Use `--command tone-loud` with the capture utility.
+`mic` measures five seconds
+of capture; the serial utility can export PCM to WAV using a temporary
+921600-baud handshake and 512 B scratch buffer. The normal console returns to
+115200 baud. `testaudio` retains the upstream Opus replay test. See
+[audio repair and acceptance](../../../docs/pocket/AUDIO_REPAIR.md).
 
 The single factory application occupies `0x10000..0x400000`. OTA firmware writes
 are disabled in both discovery and manual update paths. Custom discovery returns
@@ -80,7 +100,8 @@ speaking mouths use PCM accepted by I2S with a 100 ms stale-sample timeout.
 This is amplitude animation with bounded DMA latency, not phoneme lip sync or
 proof of acoustic playback. See [UI design and validation](../../../docs/pocket/COMPANION_UI.md).
 For Wi-Fi use the conversation build. The `Shreeharsh Assistant` setup hotspot is WPA2
-protected; its key and `http://192.168.4.1` instructions alternate on the screen.
+protected with password `Shreeharsh1757`; its key and `http://192.168.4.1`
+instructions alternate on the screen.
 The form also requires your production HTTPS origin and URL-safe 32-128 character
 device token. Settings are saved after DHCP and NVS readback. Missing backend
 settings open setup on migration while retaining saved Wi-Fi. Provider keys

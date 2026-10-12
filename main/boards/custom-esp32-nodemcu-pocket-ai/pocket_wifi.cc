@@ -1,7 +1,6 @@
 #include "pocket_wifi.h"
 #include <esp_log.h>
 #include <esp_mac.h>
-#include <esp_random.h>
 #include <esp_timer.h>
 #include <esp_wifi_default.h>
 #include <cJSON.h>
@@ -134,15 +133,12 @@ bool PocketWifi::OpenPortal() {
     portal_ap_ = esp_netif_create_default_wifi_ap();
     if (!portal_sta_ || !portal_ap_)
         return false;
-    uint8_t secret[8];
-    esp_fill_random(secret, sizeof(secret));
     snprintf(setup_ssid_, sizeof(setup_ssid_), "%s", pocket::kWifiSetupSsid);
-    for (unsigned i = 0; i < sizeof(secret); ++i)
-        snprintf(setup_key_ + 2 * i, 3, "%02X", secret[i]);
+    snprintf(setup_key_, sizeof(setup_key_), "%s", pocket::kWifiSetupPassword);
     wifi_config_t ap{};
     memcpy(ap.ap.ssid, setup_ssid_, strlen(setup_ssid_));
     ap.ap.ssid_len = strlen(setup_ssid_);
-    memcpy(ap.ap.password, setup_key_, 16);
+    memcpy(ap.ap.password, setup_key_, strlen(setup_key_));
     ap.ap.authmode = WIFI_AUTH_WPA2_PSK;
     ap.ap.max_connection = 2;
     ap.ap.channel = 1;

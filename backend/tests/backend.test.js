@@ -38,7 +38,7 @@ async function fixture(t, options = {}) {
     finishInput: () => finished++, close: () => closed++ };
   const backend = createBackend(options.config || config, async (_config, onMessage, onFailure) => {
     opened++; reply = onMessage; fail = onFailure; return provider;
-  });
+  }, options.backendOptions || {});
   backend.server.listen(0, '127.0.0.1');
   await once(backend.server, 'listening');
   const origin = `http://127.0.0.1:${backend.server.address().port}`;
@@ -49,7 +49,7 @@ async function fixture(t, options = {}) {
     await new Promise(resolve => backend.wss.close(resolve));
     await new Promise(resolve => backend.server.close(resolve));
   });
-  return { origin, capture, get opened() { return opened; }, get finished() { return finished; },
+  return { origin, capture, store: backend.store, get opened() { return opened; }, get finished() { return finished; },
     get closed() { return closed; }, reply: content => reply(content), fail: () => fail(),
     async socket(auth = headers, greeting = hello) {
       const ws = new WebSocket(origin.replace('http:', 'ws:') + '/ws', { headers: auth });
@@ -108,6 +108,45 @@ test('oversized HTTP bodies receive a bounded generic error', async t => {
   assert.deepEqual(await response.json(), { error: 'Invalid request' });
 });
 
+test('partial optional database configuration leaves environment voice available', async t => {
+  const f = await fixture(t, { config: { ...config, databaseUrl: 'postgres://unused', encryptionKey: '' } });
+  assert.equal(f.store, null);
+  assert.equal((await fetch(f.origin + '/ota/', { method: 'POST', headers })).status, 200);
+  const { ws } = await f.socket();
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  assert.equal(f.opened, 1);
+});
+
+test('optional settings, metrics and heartbeat outages do not interrupt authenticated voice', async t => {
+  let authentication = 0;
+  const store = {
+    runtime: async () => { throw new Error('Storage down'); },
+    authenticate: async id => {
+      if (++authentication > 2) throw new Error('Temporary auth storage outage');
+      return { id, token: config.token };
+    },
+    startSession: async () => { throw new Error('Metrics down'); },
+    touchDevice: async () => { throw new Error('Metrics down'); },
+    endSession: async () => {},
+  };
+  const f = await fixture(t, { backendOptions: { store, storageBudgetMs: 30, heartbeatMs: 30 } });
+  assert.equal((await fetch(f.origin + '/ota/', { method: 'POST', headers })).status, 200);
+  const { ws, messages } = await f.socket();
+  await sleep(100);
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  assert.ok(messages.some(message => message.type === 'ping'));
+  assert.equal(f.opened, 1);
+});
+
+test('database authentication denials and timeouts never fall back to the global token', async t => {
+  for (const authenticate of [async () => null, () => new Promise(() => {})]) {
+    const f = await fixture(t, { backendOptions: { store: { authenticate }, storageBudgetMs: 30 } });
+    const response = await fetch(f.origin + '/ota/', { method: 'POST', headers });
+    assert.ok([401, 503].includes(response.status));
+    assert.equal(f.opened, 0);
+  }
+});
+
 test('WebSocket rejects an unauthenticated client before opening the provider', async t => {
   const f = await fixture(t);
   const ws = new WebSocket(f.origin.replace('http:', 'ws:') + '/ws');
@@ -140,7 +179,9 @@ test('real Opus capture and playback cross the bridge, stay half-duplex, and res
   assert.equal(f.capture[0].length, 1920);
   assert.ok(f.capture[0].some(value => value !== 0));
   f.reply({ inputTranscription: { text: 'Hello' }, outputTranscription: { text: 'Hi Shreeharsh' },
-    modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: tone(3500, 24000).toString('base64') } }] },
+    // Longer than the playback lead, so the feedback attempt lands while the
+    // server is actively streaming rather than after a fully buffered reply.
+    modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: tone(24000, 24000).toString('base64') } }] },
     turnComplete: true });
   await until(() => messages.some(message => message.type === 'tts' && message.state === 'start'));
   ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'auto' }));
@@ -148,7 +189,7 @@ test('real Opus capture and playback cross the bridge, stay half-duplex, and res
   await until(() => messages.some(message => message.type === 'tts' && message.state === 'stop'));
   assert.equal(f.capture.length, 1);
   const audio = messages.filter(Buffer.isBuffer);
-  assert.equal(audio.length, 3); // Last partial 60ms frame is padded.
+  assert.equal(audio.length, 17); // Last partial 60ms frame is padded.
   for (const packet of audio) assert.equal(speaker.decode(packet).length, 2880);
   assert.equal(messages.at(-1).state, 'stop');
   assert.ok(messages.findIndex(message => message.type === 'tts' && message.state === 'start') < messages.findIndex(Buffer.isBuffer));
@@ -160,6 +201,94 @@ test('real Opus capture and playback cross the bridge, stay half-duplex, and res
   ws.close();
   await once(ws, 'close');
   await until(() => f.closed === 1);
+});
+
+test('session renewal lets a reply finish before closing the device socket', async t => {
+  const f = await fixture(t, { config: { ...config, seconds: 0.3 } });
+  const { ws, messages } = await f.socket();
+  const closed = once(ws, 'close');
+  f.reply({ modelTurn: { parts: [{ inlineData: {
+    mimeType: 'audio/pcm;rate=24000', data: tone(24000, 24000).toString('base64'),
+  } }] } });
+  f.reply({ turnComplete: true });
+  await until(() => messages.some(message => message.type === 'tts' && message.state === 'start'));
+  await sleep(450); // The configured renewal time has passed mid-reply.
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  await until(() => messages.some(message => message.type === 'tts' && message.state === 'stop'));
+  await sleep(300); // Let the ESP32 consume the last queued speaker frames.
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  const [code] = await closed;
+  assert.equal(code, 1000);
+  assert.equal(messages.filter(Buffer.isBuffer).length, 17);
+});
+
+test('playback primes slow provider chunks within 120 ms and skips delay for ready or complete replies', async () => {
+  let now = 1000;
+  const waits = [];
+  const bridge = new VoiceBridge({ readyState: 1, bufferedAmount: 0, send() {}, close() {} }, {
+    now: () => now, sleep: async milliseconds => { waits.push(milliseconds); now += milliseconds; },
+  });
+  bridge.pcm = tone(1440, 24000);
+  bridge.startReply();
+  await bridge.primeReply();
+  assert.equal(now, 1120);
+  assert.equal(waits.length, 12);
+  bridge.startReply(); // A still-active reply does not re-prime.
+  await bridge.primeReply();
+  assert.equal(now, 1120);
+  bridge.speaking = false;
+  bridge.startReply();
+  bridge.queue.push({ kind: 'audio', pcm: tone(7200, 24000) });
+  await bridge.primeReply();
+  assert.equal(now, 1120); // Six frames available: no added delay.
+  bridge.speaking = false;
+  bridge.startReply();
+  bridge.queue = [{ kind: 'complete' }];
+  await bridge.primeReply();
+  assert.equal(now, 1120); // A one-frame completed answer plays immediately.
+  bridge.destroy();
+  await bridge.worker;
+});
+
+test('paced Opus stays bounded across provider pauses and decodes directly at the device 16 kHz rate', async () => {
+  let now = 1000;
+  const sent = [];
+  const ws = { readyState: 1, bufferedAmount: 0, send: packet => {
+    if (Buffer.isBuffer(packet)) sent.push({ at: now, packet });
+  }, close() {} };
+  const bridge = new VoiceBridge(ws, { now: () => now, sleep: async ms => { now += ms; } });
+  const decoder = new OpusScript(16000, 1, OpusScript.Application.VOIP);
+  try {
+    bridge.startReply();
+    for (let i = 0; i < 18; i++) await bridge.sendFrame(tone(1440, 24000));
+    assert.equal(sent.filter(frame => frame.at === 1000).length, 7);
+    assert.equal(now, 1660); // 1080 ms speech sent with only a bounded 360 ms lead.
+    for (const frame of sent) {
+      const decoded = decoder.decode(frame.packet);
+      assert.equal(decoded.length, 1920); // 960 samples, no separate resampler.
+      assert.ok(decoded.some(value => value !== 0));
+    }
+    now += 3000; // A provider stall never creates an unlimited catch-up burst.
+    const resumedAt = now;
+    for (let i = 0; i < 18; i++) await bridge.sendFrame(tone(1440, 24000));
+    assert.equal(sent.filter(frame => frame.at === resumedAt).length, 7);
+    assert.equal(now, resumedAt + 660);
+  } finally {
+    bridge.destroy(); decoder.delete();
+    await bridge.worker;
+  }
+});
+
+test('a six-second provider burst finishes instead of overflowing the old audio queue', async t => {
+  const f = await fixture(t);
+  const { ws, messages } = await f.socket();
+  for (let i = 0; i < 12; i++) f.reply({ modelTurn: { parts: [{ inlineData: {
+    mimeType: 'audio/pcm;rate=24000', data: tone(12000, 24000).toString('base64'),
+  } }] } });
+  f.reply({ turnComplete: true });
+  await until(() => messages.some(message => message.type === 'tts' && message.state === 'stop'), 8500);
+  assert.equal(messages.filter(Buffer.isBuffer).length, 100);
+  assert.equal(ws.readyState, WebSocket.OPEN);
 });
 
 test('oversized WS packets close the socket instead of decoding unbounded input', async t => {
@@ -189,7 +318,7 @@ test('provider format, queue growth and text are bounded', async () => {
   assert.throws(() => bridge.enqueue({ modelTurn: { parts: [{ inlineData: { mimeType: 'audio/wav', data: 'AAAA' } }] } }), /format/);
   assert.throws(() => bridge.enqueue({ modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm', data: 'AA==' } }] } }), /PCM/);
   assert.throws(() => bridge.enqueue({ outputTranscription: { text: 'x'.repeat(5000) } }), /text/);
-  for (let i = 0; i < 64; i++) bridge.enqueue({ turnComplete: true });
+  for (let i = 0; i < 1024; i++) bridge.enqueue({ turnComplete: true });
   assert.throws(() => bridge.enqueue({ turnComplete: true }), /backpressure/);
   bridge.provider = { close() { throw new Error('Already closed'); } };
   bridge.destroy();

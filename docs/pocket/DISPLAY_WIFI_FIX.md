@@ -43,8 +43,8 @@ registered once, and temporary AP/STA netifs plus HTTP server are stopped and
 destroyed before handing control back to the upstream station manager.
 
 The hotspot has the exact requested name `Shreeharsh Assistant` on every start,
-without a generated suffix. WPA2-PSK uses a randomly generated 16-character key
-shown only on the LCD. It has two client slots, an explicit
+without a generated suffix. WPA2-PSK uses the owner-requested fixed password
+`Shreeharsh1757`. It has two client slots, an explicit
 HTTP address (no captive-DNS dependency), mobile layout, a capped 16-network
 scan list and correctly JSON-escaped SSIDs. HTTP requests are capped at 768
 bytes to include the custom backend origin/token. Passwords and device tokens
@@ -74,8 +74,10 @@ the release ZIP. Firmware OTA remains disabled on this single-app partition.
 
 1. Keep USB connected and release BOOT. Use the **conversation** firmware.
 2. On the ESP32, read the alternating setup captions: hotspot name plus key,
-   then `Open 192.168.4.1 / Choose 2.4GHz Wi-Fi`.
-3. In phone Wi-Fi settings join `Shreeharsh Assistant`, enter the displayed key, and
+   then `Open 192.168.4.1 / Choose 2.4GHz Wi-Fi`. The fixed hotspot password
+   is `Shreeharsh1757`.
+3. In phone Wi-Fi settings join `Shreeharsh Assistant`, enter
+   `Shreeharsh1757`, and
    choose **stay connected** if warned about no internet. Temporarily disable
    mobile-data switching/VPN only if the browser cannot reach the local address.
 4. Type **http://192.168.4.1** explicitly in Chrome/Safari. Select your home
