@@ -329,9 +329,36 @@ test('provider format, queue growth and text are bounded', async () => {
   assert.equal(bridge.pendingBytes, 0);
 });
 
+test('bounded ESP32 capture bursts survive network stalls while sustained flooding is rejected', async () => {
+  let now = 1000;
+  let captured = 0;
+  const bridge = new VoiceBridge({ readyState: 1, bufferedAmount: 0, send() {}, close() {} }, {
+    now: () => now,
+  });
+  const codec = new OpusScript(16000, 1, OpusScript.Application.VOIP);
+  bridge.provider = { sendAudio() { captured++; }, close() {} };
+  bridge.handleControl({ type: 'listen', state: 'start' });
+  const packet = codec.encode(tone(960, 16000), 960);
+  for (let i = 0; i < 16; i++) { bridge.handlePacket(packet); now += 60; }
+  now -= 60; // A stall releases the firmware's full 40-frame queue together.
+  for (let i = 0; i < 40; i++) bridge.handlePacket(packet);
+  assert.equal(captured, 56);
+  for (let i = 0; i < 20; i++) { now += 60; bridge.handlePacket(packet); }
+  assert.equal(captured, 76);
+  let allowed = 0;
+  while (allowed < 51) {
+    try { bridge.handlePacket(packet); allowed++; } catch (error) {
+      assert.match(error.message, /rate limit/); break;
+    }
+  }
+  assert.ok(allowed < 50);
+  bridge.destroy(); codec.delete();
+  await bridge.worker;
+});
+
 test('malformed and excessive-rate microphone frames are rejected', async () => {
   const ws = { readyState: 1, bufferedAmount: 0, send() {}, close() {} };
-  const bridge = new VoiceBridge(ws);
+  const bridge = new VoiceBridge(ws, { now: () => 1000 });
   const codec = new OpusScript(16000, 1, OpusScript.Application.VOIP);
   bridge.provider = { sendAudio() {}, close() {} };
   bridge.handleControl({ type: 'listen', state: 'start' });

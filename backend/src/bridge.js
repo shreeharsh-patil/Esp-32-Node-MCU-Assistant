@@ -47,8 +47,8 @@ export class VoiceBridge {
     this.maxProviderGapMs = 0;
     this.startupMs = 0;
     this.inputTranscript = '';
-    this.inputWindow = Date.now();
-    this.inputFrames = 0;
+    this.inputRefillAt = this.now();
+    this.inputTokens = 50;
     this.worker = this.run();
   }
 
@@ -59,9 +59,15 @@ export class VoiceBridge {
   handlePacket(packet) {
     if (this.closed || !this.listening || this.speaking || !this.provider) return;
     if (!packet.length || packet.length > MAX_PACKET) throw new Error('Invalid audio size');
-    const now = Date.now();
-    if (now - this.inputWindow >= 1000) { this.inputWindow = now; this.inputFrames = 0; }
-    if (++this.inputFrames > 50) throw new Error('Audio rate limit');
+    const now = this.now();
+    // A delayed ESP32 can release its bounded 40-frame send queue at once.
+    // A fixed one-second window rejected that legitimate burst after ordinary
+    // capture packets, closing the entire conversation. Keep the same sustained
+    // limit with a continuously refilled, bounded burst allowance.
+    this.inputTokens = Math.min(50, this.inputTokens + Math.max(0, now - this.inputRefillAt) * 0.05);
+    this.inputRefillAt = now;
+    if (this.inputTokens < 1) throw new Error('Audio rate limit');
+    this.inputTokens--;
     const pcm = this.decoder.decode(packet);
     if (pcm.length !== 1920) throw new Error('Expected a 60ms mono frame');
     this.provider.sendAudio(pcm);

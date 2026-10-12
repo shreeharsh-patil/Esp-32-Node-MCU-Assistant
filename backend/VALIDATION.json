@@ -1,7 +1,7 @@
 {
   "date": "2026-10-12",
   "node_version": "24.18.0",
-  "tests_passed": 44,
+  "tests_passed": 45,
   "tests_failed": 0,
   "tests_skipped": 0,
   "syntax": "PASS: all backend, dashboard, test and deployment JavaScript",
@@ -10,8 +10,8 @@
   "transport": "PASS locally: authenticated HTTP discovery and WebSocket handshake/audio/turn lifecycle",
   "provider_test_scope": "Injected provider in tests; no production mock or fallback",
   "real_gemini": "PASS: authenticated production discovery and real Live audio negotiation; two synthetic host-speech turns recognized input and returned complete Opus replies. Latest physical speech quality still pending.",
-  "vercel_deployment": "PASS: dpl_2dg6DiB87Uzn18QcRmoGKiAzF47C READY, promoted to esp-32-node-mcu-assistant.vercel.app; function region bom1; health configured=true",
-  "physical_audio": "Latest COM4 image flashed, hashes verified and 24576 NVS bytes preserved; returned to Listening with zero RX/TX errors. Owner reports prior gaps/distortion; latest audible acceptance pending.",
+  "vercel_deployment": "PASS: dpl_9cPKpAgbUmvbm6wXEbex69xT9mMV READY, promoted to esp-32-node-mcu-assistant.vercel.app; function region bom1; health configured=true. Capture burst repair deployment pending.",
+  "physical_audio": "Latest clock conversation firmware flashed on COM4 with boot/table/app hash checks and 24576 NVS bytes preserved; zero RX/TX errors, nine capture overruns during a 96-second capture. Repeated backend audio/control rejections observed; latest audible acceptance pending. USB disconnected during investigation.",
   "quiet_session_heartbeat": "PASS: real 20-second data heartbeat received; no extra captured audio",
   "shutdown": "PASS: provider/Opus cleanup is idempotent; late packets ignored",
   "key_pool": "PASS: comma list parsing, cyclic selection, cooldown, setup 429 failover, active failure reconnect, exhausted-pool request suppression, and cancelled SDK opening cleanup",
@@ -23,7 +23,7 @@
   "devices": "PASS: hashed tokens, disable/rotation/re-authentication and fail-closed auth; healthy active-session revocation checks run every 20 seconds; temporary DB outages do not terminate already authenticated sessions before hard renewal",
   "history": "PASS: bounded asynchronous writes, disabled recording, device filtering and transcript clearing without resetting session metrics",
   "browser_errors": "PASS: no error/warning console entries on the final dashboard flow",
-  "hosted_database": "PENDING: user must connect Neon DATABASE_URL and private encryption key",
+  "hosted_database": "PENDING: Production SETTINGS_ENCRYPTION_KEY added privately; user is adding DATABASE_URL. Current deployment has no conversation storage.",
   "provider_configuration": "PASS: private environment is authoritative after redeploy; addKeys/removeKeys/apiKeys mutations rejected; legacy stored keys removed; empty environment has no stored-key fallback",
   "env_files": "PASS: dev and deployment-check commands load .env plus .env.local overrides using disposable test values",
   "reliability_audit_commit": "2866cd6",
@@ -69,5 +69,6 @@
     "30039db",
     "c90ed35"
   ],
-  "clock": "PASS locally: device timezone validation, current local time/midnight/DST, fragmented STT; physical clock voice acceptance pending"
+  "clock": "PASS: local timezone/current time/midnight/DST and fragmented STT checks; staged real Gemini current-time reply correct; user confirms clock visible. Other physical voice acceptance pending.",
+  "capture_burst": "PASS locally: real Opus packets at 60ms cadence followed by the ESP32 full 40-frame queue remain accepted; excess traffic still rejected. Physical rejection cause/audible acceptance pending."
 }

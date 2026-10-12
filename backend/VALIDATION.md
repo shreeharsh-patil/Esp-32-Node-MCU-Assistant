@@ -15,7 +15,7 @@ for the next question.
 | Vercel deployment | PASS | Production health, authenticated discovery and real provider audio negotiation pass. Voice function runs in Mumbai (`bom1`); current deployment ID is in `VALIDATION.json`. |
 | Physical speech/playback | Latest acceptance pending | Updated COM4 firmware hashes and NVS preservation verified; device returned to Listening with zero RX/TX errors. Owner reports cracking on the earlier version; latest audible repair needs a live listen. |
 
-44 Node integration/unit tests passed with zero failures and zero skips.
+45 Node integration/unit tests passed with zero failures and zero skips.
 New regressions cover a six-second PCM burst, partial optional database setup,
 storage outages without voice interruption, fail-closed device authentication,
 rejected/transient Gemini key failover, responses for excess tool-call IDs,
@@ -69,4 +69,6 @@ settings still save successfully. No browser errors/warnings were observed.
 Local startup and the deployment checker also passed disposable `.env` loading
 and `.env.local` override checks. These checks use test values only.
 
-Clock update: 44 backend tests pass. Device timezone metadata is optional and validated; the current-time tool returns the same configured local time as the clock. Per-turn STT fragments are assembled before delivery. Midnight and US DST cases are covered. Physical voice/display acceptance remains pending. See `../docs/pocket/CLOCK_UI.md`.
+Clock update: 45 backend tests pass. Device timezone metadata is optional and validated; the current-time tool returns the same configured local time as the clock. Per-turn STT fragments are assembled before delivery. Midnight and US DST cases are covered. Physical voice/display acceptance remains pending. See `../docs/pocket/CLOCK_UI.md`.
+
+Live clock check: generated host speech asking the current time produced the correct Asia/Kolkata reply and 34 Opus frames. The owner confirms the physical clock is visible. Production still needs DATABASE_URL for saved history; SETTINGS_ENCRYPTION_KEY has been added privately. A new capture token bucket accepts the firmware's bounded 40-frame network burst without removing the sustained rate limit; hardware acceptance remains pending.

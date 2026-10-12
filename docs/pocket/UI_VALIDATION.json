@@ -181,5 +181,6 @@
         }
       }
     }
-  }
+  },
+  "latest_clock_validation": "CLOCK_VALIDATION.json; separate current clock results from historical face measurements"
 }

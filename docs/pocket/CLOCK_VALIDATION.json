@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-12",
+  "feature": "Dynamic Pocket clock with richer blue and violet/magenta glows",
+  "host_tests_passed": 118,
+  "backend_tests_passed": 45,
+  "native_renderer": {
+    "result": "PASS",
+    "size": [
+      280,
+      240
+    ],
+    "strip_bytes": 11200,
+    "unchanged_time_flushes": 0,
+    "minute_redraw": "partial",
+    "clock_face_round_trips": 100,
+    "stable_free_bytes": 2073648,
+    "maximum_used_bytes": 22128,
+    "scope": "Actual production LVGL/font with simulated date/time; no physical panel image"
+  },
+  "builds": {
+    "conversation": {
+      "result": "PASS",
+      "merged_bytes": 2259136,
+      "sha256": "5143b4d74965ed65d5611b3e56c9e70f431a56f5b7b1cee84b74e8881b5d5128"
+    },
+    "diagnostics": {
+      "result": "PASS",
+      "merged_bytes": 2239904,
+      "sha256": "6a8e2a0b693f9a50e1739ac43de29cf3a3272221df29dd0f882c1115e5528762"
+    },
+    "representative": "PASS: bread-compact-esp32-lcd after optional Board timezone/WebSocket changes"
+  },
+  "physical": {
+    "installation": "PASS: conversation image above flashed to classic ESP32 COM4; guarded component checksum verification",
+    "nvs_preserved_bytes": 24576,
+    "boot_face": "PASS serial mode FACE; physical boot animation acceptance pending",
+    "time_sync": "PASS: nonblocking NTP synchronized at about 4 seconds; Asia/Kolkata time valid",
+    "panel_output": "PASS owner observation: red/green/blue test bars, followed by visible clock with blue/purple background; test bars cleared",
+    "rx_transfer_errors": 0,
+    "tx_transfer_errors": 0,
+    "capture_overruns": 9,
+    "capture_seconds": 96,
+    "minimum_internal_free_bytes": 20616,
+    "minute_persistence": "PENDING: RTC advanced, but energy gate returned FACE during capture; sustained environmental energy can dismiss it. No semantic local VAD on this chip.",
+    "voice_commands_and_audibility": "PENDING: repeated backend audio/control rejection observed; USB disconnected during diagnosis"
+  },
+  "real_provider": {
+    "result": "PASS",
+    "scope": "Generated host speech against staged production, not acoustic ESP32 acceptance",
+    "input": "What time is it?",
+    "reply": "Correct Asia/Kolkata current time",
+    "frames": 34,
+    "decoded_samples_16khz": 32640,
+    "first_audio_after_speech_ms": 2428,
+    "maximum_network_packet_gap_ms": 441
+  },
+  "constraints": {
+    "pins_changed": false,
+    "audio_configuration_changed_for_clock": false,
+    "psram_required": false,
+    "full_framebuffer_allocated": false
+  },
+  "preview": "ui-preview/clock-reference.png"
+}
