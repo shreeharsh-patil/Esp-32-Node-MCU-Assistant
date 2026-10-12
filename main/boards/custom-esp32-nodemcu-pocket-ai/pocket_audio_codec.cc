@@ -177,7 +177,7 @@ int PocketAudioCodec::Write(const int16_t* data, int samples) {
 int PocketAudioCodec::WriteSamples(const int16_t* data, int samples, float output_gain,
                                    float voice_boost) {
     std::lock_guard<std::mutex> lock(output_mutex_);
-    if (!ready_ || !playback_.load())
+    if (!ready_ || !playback_.load() || !data || samples <= 0)
         return 0;
     int done = 0;
     while (done < samples && playback_.load()) {
@@ -196,12 +196,30 @@ int PocketAudioCodec::WriteSamples(const int16_t* data, int samples, float outpu
             tx_squares += pcm * pcm;
             tx_peak = std::max(tx_peak, static_cast<uint32_t>(std::abs(pcm)));
         }
-        size_t bytes = 0;
-        const auto err = i2s_channel_write(tx_handle_, tx_words_.data(), frames * 8, &bytes, 150);
-        if (err != ESP_OK || bytes != static_cast<size_t>(frames * 8)) {
-            tx_errors_.fetch_add(1);
+        const size_t expected = frames * 8;
+        size_t accepted = 0;
+        // IDF can return a timeout after copying only part of the buffer. Keep
+        // those bytes and retry the remainder, without converting or sending
+        // the accepted samples twice. Bound retries if the channel is stalled.
+        for (int attempt = 0; attempt < 3 && accepted < expected && playback_.load(); ++attempt) {
+            size_t bytes = 0;
+            const auto err = i2s_channel_write(
+                tx_handle_, reinterpret_cast<const uint8_t*>(tx_words_.data()) + accepted,
+                expected - accepted, &bytes, 150);
+            if (bytes > expected - accepted) {
+                tx_errors_.fetch_add(1);
+                break;
+            }
+            accepted += bytes;
+            if (err != ESP_OK || accepted != expected)
+                tx_errors_.fetch_add(1);
+            if (err != ESP_OK && err != ESP_ERR_TIMEOUT)
+                break;
+        }
+        if (accepted != expected) {
+            done += accepted / 8;
             playback_rms_.store(0);
-            return done;
+            break;
         }
         playback_rms_.store(
             static_cast<uint32_t>(std::sqrt(static_cast<double>(squares) / frames)));

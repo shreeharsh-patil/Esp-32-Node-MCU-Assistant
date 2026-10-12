@@ -7,6 +7,10 @@ const PLAYBACK_LEAD_MS = 180; // Let the ESP32 buffer a few frames across Wi-Fi 
 const FRAME_BYTES = FRAME_SAMPLES * 2;
 const MAX_PACKET = OpusScript.MAX_PACKET_SIZE;
 const MAX_PCM_CHUNK = 65536;
+// Gemini may emit PCM faster than the 60 ms device playback cadence. Keep a
+// bounded ~22-second burst so a normal spoken reply is not cut off mid-sentence.
+const MAX_PENDING_BYTES = 1048576;
+const MAX_PENDING_EVENTS = 1024;
 const TEXT_LIMIT = 400;
 
 export function validHello(message) {
@@ -88,7 +92,9 @@ export class VoiceBridge {
     if (content.turnComplete) events.push({ kind: 'complete' });
     for (const event of events) {
       const bytes = event.pcm?.length || Buffer.byteLength(event.text || '');
-      if (this.queue.length >= 64 || this.pendingBytes + bytes > 262144) throw new Error('Voice backpressure limit');
+      if (this.queue.length >= MAX_PENDING_EVENTS || this.pendingBytes + bytes > MAX_PENDING_BYTES) {
+        throw new Error('Voice backpressure limit');
+      }
       this.pendingBytes += bytes;
       this.queue.push({ ...event, bytes });
     }

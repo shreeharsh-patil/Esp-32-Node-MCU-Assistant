@@ -29,6 +29,22 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def release_files(output=OUTPUT):
+    """Only package named release artifacts; device/NVS backups stay local."""
+    names = ['pocket-xiaozhi-esp32.bin', 'pocket-xiaozhi-esp32-diagnostics.bin',
+             'VALIDATION.json', 'VALIDATION.md', 'manifest.json', 'manifest-diagnostics.json',
+             'index.html', 'LICENSE_INVENTORY.txt', 'host-tests.log', 'backend-tests.log',
+             'regression-build.log', 'source-changes.patch', 'SHA256SUMS.txt']
+    paths = [output / name for name in names]
+    for kind in ['conversation', 'diagnostics']:
+        paths.extend(output / kind / name for name in
+                     ['bootloader.bin', 'partition-table.bin', 'xiaozhi.bin', 'xiaozhi.elf',
+                      'xiaozhi.map', 'build.log', 'dependencies.lock', 'flasher_args.json',
+                      'image-report.json', 'sdkconfig.txt', 'size.json'])
+    paths.extend(path for path in (output / 'licenses').rglob('*') if path.is_file())
+    return sorted(path for path in paths if path.is_file())
+
+
 def archive_bytes(relative_name, path):
     """Keep identifying restore details local; anonymize device IDs in shared logs."""
     if relative_name == 'docs/pocket/DEVICE_BACKUP.log':
@@ -98,7 +114,7 @@ def main():
                 'hardware_tests_A_to_N': ('See hardware_test_results; cloud and extended acceptance pending'
                                         if hardware_results else 'PENDING: firmware not flashed or tested on physical board'),
                 'voice_backend': 'User-owned Vercel Express/WebSocket backend with Gemini Live',
-                'real_provider_and_conversation': 'PENDING: production URL/key and physical acceptance required',
+                'real_provider_and_conversation': backend_results['real_gemini'],
                 'peak_runtime_ram': 'PENDING: cannot be inferred from linker memory usage',
                 'browser_installer': 'PENDING: no browser/serial end-to-end test',
                 'physical_device_probe': device_probe, 'hardware_test_results': hardware_results,
@@ -118,13 +134,7 @@ def main():
                      str(hardware_results['heap_measurements']['minimum_internal_free_bytes']) +
                      ' bytes. See docs/pocket/DEVICE_DIAGNOSTICS_RESULTS.json and the raw device logs.\n'
                      if hardware_results else 'Physical firmware tests A-N are PENDING.\n')
-    installation_note = (
-        'The current conversation image was flashed on COM4 with boot/table/app hash verification; '
-        'NVS was preserved. Startup and the updated face were confirmed. Backend deployment '
-        'and real speech/playback acceptance remain pending.'
-        if ui_results and ui_results.get('hardware', {}).get('installation', '').startswith('PASS')
-        else 'No new image was flashed during this implementation: deployment URL/private keys '
-        'and subsequent hardware testing are still required.')
+    installation_note = backend_results['physical_audio']
     text = f'''# Release validation
 
 Official XiaoZhi source commit `{upstream}`. ESP-IDF 6.1 commit `{sdk_commit}`.
@@ -152,17 +162,15 @@ Current companion UI validation: see `docs/pocket/UI_VALIDATION.json` and
 `COMPANION_UI.md`. Earlier portrait observations do not validate the new landscape
 orientation. Native LVGL screenshots use simulated state/audio/setup data.
 
-Full cloud conversation peak RAM, long-duration stability, acoustic acceptance,
-speaker power measurement and real custom-backend conversation remain incomplete.
+Long-duration stability, full cloud conversation peak RAM and speaker power
+measurements remain incomplete. Live voice evidence is listed in backend validation.
 The new conversation image enables your Vercel backend and hands-free listening.
 {installation_note} Read `backend/README.md`.
 The optional browser installer is supplied but has no browser/serial end-to-end result.
 Read `docs/pocket/HARDWARE_TESTS.md` for the actual acceptance procedure.
 
-The upstream Linux-oriented test suite has Windows cwd cleanup and WSL-launcher
-issues. `python -X utf8 scripts/pocket_host_tests.py` runs its assertions unchanged
-with temporary cwd cleanup and explicit Git Bash selection. UTF-8 avoids Windows
-default code-page errors. Negative-test fixture error messages in the log are expected.
+The host tests restore cwd before temporary-directory cleanup on Windows and
+select Git Bash explicitly. Negative-test fixture error messages in the log are expected.
 
 The build reports retain upstream CMake dependency warnings and FATFS Kconfig notes.
 These do not represent physical hardware evidence. OTA firmware writes are disabled;
@@ -193,7 +201,7 @@ there is no second app slot or signed-update/rollback claim.
 <esp-web-install-button manifest="manifest-diagnostics.json"><button slot="activate">Install diagnostic firmware</button></esp-web-install-button></section>
 <p>Release BOOT before reset or flashing. Verify your board is classic ESP32 with at least 4 MB flash. These merged images clear stored settings; Wi-Fi and backend setup are required again. Choose full erase only for an initial migration. Use the guarded USB flasher to preserve existing settings.</p>
 <p><a href="VALIDATION.md">Build validation and pending hardware tests</a> · <a href="SHA256SUMS.txt">Checksums</a></p>
-<small>Use a Web Serial browser on localhost or HTTPS. See the validation report for actual hardware results. Real provider conversation and this browser installer remain unverified.</small></html>''', encoding='utf-8')
+<small>Use a Web Serial browser on localhost or HTTPS. See the validation report for live voice and hardware results. This browser installer remains unverified.</small></html>''', encoding='utf-8')
     licenses = OUTPUT / 'licenses'
     license_inventory = []
     for base, prefix in [(ROOT / 'managed_components', 'managed_components'), (idf_path, 'esp-idf')]:
@@ -221,8 +229,8 @@ there is no second app slot or signed-update/rollback claim.
         if archive.testzip() is not None:
             raise SystemExit('Backend ZIP CRC check failed')
     checksums = []
-    for path in sorted(OUTPUT.rglob('*')):
-        if path.is_file() and path.suffix.lower() != '.zip' and path.name not in ('SHA256SUMS.txt', 'PACKAGE_SHA256.txt'):
+    for path in release_files():
+        if path.name != 'SHA256SUMS.txt':
             checksums.append(f'{digest(path)}  {path.relative_to(OUTPUT).as_posix()}')
     (OUTPUT / 'SHA256SUMS.txt').write_text('\n'.join(checksums)+'\n', encoding='utf-8')
     source_names = set(subprocess.check_output(['git', 'ls-files'], cwd=ROOT, text=True).splitlines())
@@ -245,9 +253,8 @@ there is no second app slot or signed-update/rollback claim.
                     archive.writestr('XiaoZhi-Pocket-ESP32/'+name, content)
         # The generated lock pins component versions for a clean rebuild.
         archive.write(OUTPUT/'conversation/dependencies.lock', 'XiaoZhi-Pocket-ESP32/dependencies.lock')
-        for path in sorted(OUTPUT.rglob('*')):
-            if path.is_file() and path.suffix.lower() != '.zip' and path.name != 'PACKAGE_SHA256.txt':
-                archive.write(path, 'XiaoZhi-Pocket-ESP32/pocket-release/'+path.relative_to(OUTPUT).as_posix())
+        for path in release_files():
+            archive.write(path, 'XiaoZhi-Pocket-ESP32/pocket-release/'+path.relative_to(OUTPUT).as_posix())
     with zipfile.ZipFile(package) as archive:
         if archive.testzip() is not None:
             raise SystemExit('Source/release ZIP CRC check failed')

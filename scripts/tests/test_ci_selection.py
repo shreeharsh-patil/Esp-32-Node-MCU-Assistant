@@ -159,7 +159,7 @@ class WorkflowDiffTests(unittest.TestCase):
         self.commit_file("README.md")
         self.base = self.git("rev-parse", "HEAD")
         self.git("update-ref", "refs/remotes/origin/main", self.base)
-        workflow = (ROOT / ".github/workflows/build.yml").read_text()
+        workflow = (ROOT / ".github/workflows/build.yml").read_text(encoding="utf-8")
         select = workflow.split("name: Select variants based on changes", 1)[1]
         self.script = textwrap.dedent(select.split("        run: |\n", 1)[1].split("\n  build:", 1)[0])
 
@@ -184,8 +184,10 @@ class WorkflowDiffTests(unittest.TestCase):
             "GITHUB_OUTPUT": str(output), "RUNNER_TEMP": str(self.root),
             "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"),
         })
+        git_bash = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe"
+        shell = str(git_bash) if os.name == "nt" and git_bash.exists() else "bash"
         subprocess.run(
-            ["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", self.script],
+            [shell, "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", self.script],
             cwd=self.root, env=env, capture_output=True, text=True, check=True,
         )
         return json.loads(output.read_text().removeprefix("variants="))

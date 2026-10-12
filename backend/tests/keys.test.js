@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readConfig } from '../src/config.js';
-import { nextGeminiKey, markRateLimited, isRateLimited, openGemini } from '../src/gemini.js';
+import { nextGeminiKey, markRateLimited, isRateLimited, geminiFailureKind, openGemini } from '../src/gemini.js';
 
 test('comma-separated Gemini keys are trimmed, deduplicated and backwards compatible', () => {
   assert.deepEqual(readConfig({ GEMINI_API_KEYS: ' key-one, key-two, key-one, ,key-three ' }).apiKeys,
@@ -64,6 +64,33 @@ test('active 429 triggers one reconnect and the next session avoids the exhauste
   assert.equal(failures, 1);
   assert.notEqual(clients[0].apiKey, clients[1].apiKey);
   current.close(); next.close();
+});
+
+test('rejected and temporarily unavailable setup keys fail over without hiding invalid model errors', async () => {
+  for (const failure of [{ status: 403 }, { code: 1011, reason: 'Internal error' }]) {
+    const config = readConfig({ GEMINI_API_KEYS: 'one,two' });
+    const attempted = [];
+    const provider = await openGemini(config, () => {}, () => assert.fail('Setup must fail over'), key => ({
+      live: { connect(options) {
+        attempted.push(key);
+        if (attempted.length === 1) {
+          queueMicrotask(() => options.callbacks.onclose(failure));
+          return new Promise(() => {});
+        }
+        return Promise.resolve({ close() {}, sendRealtimeInput() {} });
+      } },
+    }));
+    assert.equal(attempted.length, 2);
+    assert.notEqual(attempted[0], attempted[1]);
+    provider.close();
+  }
+  assert.equal(geminiFailureKind({ status: 400, message: 'Invalid model' }), 'provider_error');
+  assert.equal(geminiFailureKind({ message: 'API key expired' }), 'key_rejected');
+  let attempts = 0;
+  await assert.rejects(() => openGemini(readConfig({ GEMINI_API_KEYS: 'one,two' }), () => {}, () => {}, () => ({
+    live: { connect: async () => { attempts++; throw Object.assign(new Error('Invalid model'), { status: 400 }); } },
+  })), /Invalid model/);
+  assert.equal(attempts, 1);
 });
 
 test('all rate-limited keys stop after one pass and no requests are made during cooldown', async () => {

@@ -38,7 +38,7 @@ async function fixture(t, options = {}) {
     finishInput: () => finished++, close: () => closed++ };
   const backend = createBackend(options.config || config, async (_config, onMessage, onFailure) => {
     opened++; reply = onMessage; fail = onFailure; return provider;
-  });
+  }, options.backendOptions || {});
   backend.server.listen(0, '127.0.0.1');
   await once(backend.server, 'listening');
   const origin = `http://127.0.0.1:${backend.server.address().port}`;
@@ -49,7 +49,7 @@ async function fixture(t, options = {}) {
     await new Promise(resolve => backend.wss.close(resolve));
     await new Promise(resolve => backend.server.close(resolve));
   });
-  return { origin, capture, get opened() { return opened; }, get finished() { return finished; },
+  return { origin, capture, store: backend.store, get opened() { return opened; }, get finished() { return finished; },
     get closed() { return closed; }, reply: content => reply(content), fail: () => fail(),
     async socket(auth = headers, greeting = hello) {
       const ws = new WebSocket(origin.replace('http:', 'ws:') + '/ws', { headers: auth });
@@ -106,6 +106,45 @@ test('oversized HTTP bodies receive a bounded generic error', async t => {
     headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ data: 'x'.repeat(10000) }) });
   assert.equal(response.status, 413);
   assert.deepEqual(await response.json(), { error: 'Invalid request' });
+});
+
+test('partial optional database configuration leaves environment voice available', async t => {
+  const f = await fixture(t, { config: { ...config, databaseUrl: 'postgres://unused', encryptionKey: '' } });
+  assert.equal(f.store, null);
+  assert.equal((await fetch(f.origin + '/ota/', { method: 'POST', headers })).status, 200);
+  const { ws } = await f.socket();
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  assert.equal(f.opened, 1);
+});
+
+test('optional settings, metrics and heartbeat outages do not interrupt authenticated voice', async t => {
+  let authentication = 0;
+  const store = {
+    runtime: async () => { throw new Error('Storage down'); },
+    authenticate: async id => {
+      if (++authentication > 2) throw new Error('Temporary auth storage outage');
+      return { id, token: config.token };
+    },
+    startSession: async () => { throw new Error('Metrics down'); },
+    touchDevice: async () => { throw new Error('Metrics down'); },
+    endSession: async () => {},
+  };
+  const f = await fixture(t, { backendOptions: { store, storageBudgetMs: 30, heartbeatMs: 30 } });
+  assert.equal((await fetch(f.origin + '/ota/', { method: 'POST', headers })).status, 200);
+  const { ws, messages } = await f.socket();
+  await sleep(100);
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  assert.ok(messages.some(message => message.type === 'ping'));
+  assert.equal(f.opened, 1);
+});
+
+test('database authentication denials and timeouts never fall back to the global token', async t => {
+  for (const authenticate of [async () => null, () => new Promise(() => {})]) {
+    const f = await fixture(t, { backendOptions: { store: { authenticate }, storageBudgetMs: 30 } });
+    const response = await fetch(f.origin + '/ota/', { method: 'POST', headers });
+    assert.ok([401, 503].includes(response.status));
+    assert.equal(f.opened, 0);
+  }
 });
 
 test('WebSocket rejects an unauthenticated client before opening the provider', async t => {
@@ -181,6 +220,18 @@ test('session renewal lets a reply finish before closing the device socket', asy
   assert.equal(messages.filter(Buffer.isBuffer).length, 17);
 });
 
+test('a six-second provider burst finishes instead of overflowing the old audio queue', async t => {
+  const f = await fixture(t);
+  const { ws, messages } = await f.socket();
+  for (let i = 0; i < 12; i++) f.reply({ modelTurn: { parts: [{ inlineData: {
+    mimeType: 'audio/pcm;rate=24000', data: tone(12000, 24000).toString('base64'),
+  } }] } });
+  f.reply({ turnComplete: true });
+  await until(() => messages.some(message => message.type === 'tts' && message.state === 'stop'), 8500);
+  assert.equal(messages.filter(Buffer.isBuffer).length, 100);
+  assert.equal(ws.readyState, WebSocket.OPEN);
+});
+
 test('oversized WS packets close the socket instead of decoding unbounded input', async t => {
   const f = await fixture(t);
   const { ws } = await f.socket();
@@ -208,7 +259,7 @@ test('provider format, queue growth and text are bounded', async () => {
   assert.throws(() => bridge.enqueue({ modelTurn: { parts: [{ inlineData: { mimeType: 'audio/wav', data: 'AAAA' } }] } }), /format/);
   assert.throws(() => bridge.enqueue({ modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm', data: 'AA==' } }] } }), /PCM/);
   assert.throws(() => bridge.enqueue({ outputTranscription: { text: 'x'.repeat(5000) } }), /text/);
-  for (let i = 0; i < 64; i++) bridge.enqueue({ turnComplete: true });
+  for (let i = 0; i < 1024; i++) bridge.enqueue({ turnComplete: true });
   assert.throws(() => bridge.enqueue({ turnComplete: true }), /backpressure/);
   bridge.provider = { close() { throw new Error('Already closed'); } };
   bridge.destroy();

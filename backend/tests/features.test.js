@@ -55,5 +55,12 @@ test('Gemini Live can call bounded current-web search and receive its tool respo
   callbacks.onmessage({ toolCall: { functionCalls: [{ id: 'call-2', name: 'get_current_time', args: {} }] } });
   for (let i = 0; i < 20 && responses.length < 2; i++) await new Promise(done => setTimeout(done, 10));
   assert.match(responses[1].functionResponses[0].response.india, /IST|India Standard Time|GMT\+5:30/);
+  callbacks.onmessage({ toolCall: { functionCalls: Array.from({ length: 6 }, (_, index) =>
+    ({ id: 'batch-' + index, name: 'get_current_time', args: {} })) } });
+  for (let i = 0; i < 20 && responses.length < 3; i++) await new Promise(done => setTimeout(done, 10));
+  assert.deepEqual(responses[2].functionResponses.map(response => response.id),
+    Array.from({ length: 6 }, (_, index) => 'batch-' + index));
+  assert.ok(responses[2].functionResponses[3].response.utc);
+  assert.match(responses[2].functionResponses[5].response.error, /four tools/);
   provider.close();
 });

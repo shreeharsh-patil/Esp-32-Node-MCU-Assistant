@@ -24,6 +24,186 @@ def recording():
 
 
 class AudioDiagnosticsTests(unittest.TestCase):
+    def test_burst_reply_packets_survive_before_main_task_and_short_reply_resumes_capture(self):
+        compiler = shutil.which('g++')
+        if not compiler:
+            self.skipTest('native C++ compiler not installed')
+        source = (ROOT / 'main/application.cc').read_text(encoding='utf-8')
+        start = source.index('    protocol_->OnIncomingAudio(')
+        registration = source[start:source.index('\n\n    protocol_->OnAudioChannelOpened', start)]
+        start = source.index('void Application::PrepareIncomingReply()')
+        methods = source[start:source.index('\nvoid Application::HandleStateChangedEvent()', start)]
+        start = source.index('case kDeviceStateSpeaking:', source.index('void Application::HandleStateChangedEvent()'))
+        speaking = source[start:source.index('case kDeviceStateNotifying:', start)]
+        fixture = r'''
+#include <atomic>
+#include <cassert>
+#include <deque>
+#include <functional>
+#include <memory>
+#include <vector>
+constexpr int kDeviceStateIdle=0, kDeviceStateListening=1, kDeviceStateSpeaking=2;
+constexpr int kListeningModeManualStop=0, kListeningModeAutoStop=1, kListeningModeRealtime=2;
+namespace Lang { namespace Strings { const char* SPEAKING="speaking"; } }
+struct AudioStreamPacket { int id; };
+struct AudioService {
+    int resets=0;
+    bool processing=true;
+    std::vector<int> packets;
+    void ResetDecoder() { ++resets; packets.clear(); }
+    void PushPacketToDecodeQueue(std::unique_ptr<AudioStreamPacket> packet) { packets.push_back(packet->id); }
+    void EnableVoiceProcessing(bool enabled) { processing=enabled; }
+    void EnableWakeWordDetection(bool) {}
+    bool IsAfeWakeWord() { return false; }
+};
+struct Display { void SetStatus(const char*) {} };
+struct Board {
+    bool custom=true;
+    static Board& GetInstance() { static Board board; return board; }
+    bool UsesCustomBackend() { return custom; }
+};
+struct Protocol {
+    std::function<void(std::unique_ptr<AudioStreamPacket>)> incoming;
+    void OnIncomingAudio(std::function<void(std::unique_ptr<AudioStreamPacket>)> callback) { incoming=callback; }
+};
+class Application {
+public:
+    int state_=kDeviceStateListening, listening_mode_=kListeningModeAutoStop;
+    bool aborted_=false;
+    std::atomic<bool> custom_reply_audio_ready_{false};
+    AudioService audio_service_;
+    Display display_;
+    std::unique_ptr<Protocol> protocol_=std::make_unique<Protocol>();
+    std::deque<std::function<void()>> tasks_;
+    int GetDeviceState() { return state_; }
+    void SetDeviceState(int state) { state_=state; }
+    void Schedule(std::function<void()> callback) { tasks_.push_back(callback); }
+    void Drain() { while (!tasks_.empty()) { auto task=tasks_.front(); tasks_.pop_front(); task(); } }
+    void PrepareIncomingReply();
+    void FinishIncomingReply();
+    void Install() {
+'''
+        middle = '''\n    }\n    void HandleStateChangedEvent() {\n        auto display=&display_;\n        switch(state_) {\n'''
+        checks = r'''
+        default: break;
+        }
+    }
+};
+int main() {
+    Application burst;
+    burst.Install();
+    burst.audio_service_.packets.push_back(999);
+    burst.PrepareIncomingReply();
+    burst.protocol_->incoming(std::make_unique<AudioStreamPacket>(AudioStreamPacket{42}));
+    burst.FinishIncomingReply(); // start, audio, stop all arrive before the main task.
+    burst.Drain();
+    assert(burst.state_ == kDeviceStateListening && !burst.custom_reply_audio_ready_);
+    assert(!burst.audio_service_.processing && burst.audio_service_.resets == 1);
+    assert(burst.audio_service_.packets == std::vector<int>{42});
+    burst.protocol_->incoming(std::make_unique<AudioStreamPacket>(AudioStreamPacket{43}));
+    assert(burst.audio_service_.packets == std::vector<int>{42});
+    burst.PrepareIncomingReply();
+    burst.protocol_->incoming(std::make_unique<AudioStreamPacket>(AudioStreamPacket{44}));
+    burst.Drain();
+    burst.HandleStateChangedEvent(); // duplicate STATE_CHANGED delivery must retain audio.
+    assert(burst.audio_service_.resets == 2 && burst.audio_service_.packets == std::vector<int>{44});
+    Board::GetInstance().custom=false;
+    Application legacy;
+    legacy.Install(); legacy.PrepareIncomingReply(); legacy.Drain(); legacy.HandleStateChangedEvent();
+    assert(legacy.audio_service_.resets == 1 && !legacy.custom_reply_audio_ready_);
+}
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            cpp, exe = Path(directory) / 'reply-start.cpp', Path(directory) / 'reply-start.exe'
+            cpp.write_text(fixture + registration + middle + speaking + checks + methods, encoding='utf-8')
+            subprocess.run([compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror',
+                            str(cpp), '-o', str(exe)], check=True)
+            subprocess.run([str(exe)], check=True)
+
+    def test_real_speaker_write_retries_partial_dma_without_duplicate_samples(self):
+        compiler = shutil.which('g++')
+        if not compiler:
+            self.skipTest('native C++ compiler not installed')
+        source = (ROOT / 'main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc').read_text()
+        start = source.index('int PocketAudioCodec::WriteSamples(')
+        end = source.index('\nuint32_t PocketAudioCodec::PlaybackRms()', start)
+        fixture = r'''
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <mutex>
+#include <vector>
+#include "audio_math.h"
+constexpr int ESP_OK=0, ESP_ERR_TIMEOUT=1, ESP_ERR_INVALID_STATE=2;
+struct Step { int result; size_t bytes; };
+std::vector<Step> steps;
+std::vector<uint8_t> written;
+size_t calls=0;
+int i2s_channel_write(int, const void* data, size_t length, size_t* bytes, unsigned timeout) {
+    assert(timeout == 150 && calls < steps.size());
+    const auto step=steps[calls++];
+    *bytes=std::min(length, step.bytes);
+    const auto* pointer=static_cast<const uint8_t*>(data);
+    written.insert(written.end(), pointer, pointer+*bytes);
+    return step.result;
+}
+int64_t esp_timer_get_time() { return 123456000; }
+class PocketAudioCodec {
+public:
+    static constexpr int kChunk=128;
+    int tx_handle_=1;
+    bool ready_=true;
+    std::atomic<bool> playback_{true};
+    std::atomic<int> safe_volume_{80};
+    std::atomic<uint32_t> tx_errors_{0}, playback_rms_{0}, tx_rms_{0}, tx_peak_{0};
+    std::atomic<uint32_t> playback_at_ms_{0}, output_frames_{0};
+    float speaker_previous_=0, speaker_filtered_=0;
+    std::mutex output_mutex_;
+    std::array<int32_t, kChunk*2> tx_words_{};
+    int WriteSamples(const int16_t*, int, float, float=1.0f);
+};
+'''
+        checks = r'''
+int main() {
+    std::array<int16_t, 160> input{};
+    std::array<int32_t, 320> expected{};
+    float previous=0, filtered=0;
+    for (size_t i=0; i<input.size(); ++i) {
+        input[i]=static_cast<int16_t>(4000*std::sin(i*6.2831853*440/16000));
+        expected[2*i]=expected[2*i+1]=pocket::ConvertSpeaker(input[i], previous, filtered, 80, 0.8f);
+    }
+    PocketAudioCodec recovered;
+    steps={{ESP_ERR_TIMEOUT,256},{ESP_OK,128},{ESP_OK,640},{ESP_OK,256}};
+    assert(recovered.WriteSamples(input.data(), input.size(), 0.8f) == 160);
+    assert(calls == 4 && recovered.output_frames_ == 160 && recovered.tx_errors_ == 2);
+    assert(written.size() == sizeof(expected));
+    assert(std::memcmp(written.data(), expected.data(), written.size()) == 0);
+    // A permanently stalled channel is bounded and counts already accepted frames.
+    calls=0; written.clear();
+    steps={{ESP_ERR_TIMEOUT,256},{ESP_ERR_TIMEOUT,0},{ESP_ERR_TIMEOUT,0}};
+    PocketAudioCodec stalled;
+    assert(stalled.WriteSamples(input.data(), input.size(), 0.8f) == 32);
+    assert(calls == 3 && stalled.output_frames_ == 32 && stalled.tx_errors_ == 3);
+    assert(written.size() == 256 && stalled.playback_rms_ == 0);
+    calls=0; written.clear(); steps={{ESP_ERR_INVALID_STATE,0}};
+    PocketAudioCodec disabled;
+    assert(disabled.WriteSamples(input.data(), input.size(), 0.8f) == 0 && calls == 1);
+    disabled.playback_=false;
+    assert(disabled.WriteSamples(input.data(), input.size(), 0.8f) == 0 && calls == 1);
+}
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            cpp, exe = Path(directory) / 'partial-write.cpp', Path(directory) / 'partial-write.exe'
+            cpp.write_text(fixture + source[start:end] + checks)
+            subprocess.run([compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror',
+                            '-I', str(ROOT / 'main/boards/custom-esp32-nodemcu-pocket-ai'),
+                            str(cpp), '-o', str(exe)], check=True)
+            subprocess.run([str(exe)], check=True)
+
     def test_real_tones_duration_gain_and_state_restoration(self):
         compiler = shutil.which('g++')
         if not compiler:

@@ -35,6 +35,20 @@ export function isRateLimited(error) {
     /RESOURCE_EXHAUSTED|resource[^.]{0,80}exhaust|quota[^.]{0,80}(?:exceed|exhaust|limit)|(?:exceeded|exhausted)[^.]{0,80}quota|rate.?limit|\b429\b/i.test(
       String(error?.message || error?.reason || '').slice(0, 2048));
 }
+export function geminiFailureKind(error) {
+  if (['rate_limited', 'key_rejected', 'provider_unavailable', 'provider_error'].includes(error?.kind)) return error.kind;
+  if (isRateLimited(error)) return 'rate_limited';
+  const status = [error?.status, error?.code, error?.error?.code].map(Number);
+  const message = String(error?.message || error?.reason || '').slice(0, 2048);
+  if (status.some(value => value === 401 || value === 403) ||
+      /API_KEY_INVALID|PERMISSION_DENIED|(?:invalid|expired|restricted)[^.]{0,60}api.?key|api.?key[^.]{0,60}(?:invalid|expired|restricted)/i.test(message)) {
+    return 'key_rejected';
+  }
+  if (status.some(value => [500, 502, 503, 504, 1011].includes(value)) ||
+      /\bUNAVAILABLE\b|\binternal (?:server )?error\b|service unavailable/i.test(message)) return 'provider_unavailable';
+  return 'provider_error';
+}
+const retryableFailure = kind => kind !== 'provider_error';
 export function markRateLimited(config, slot, now = Date.now()) {
   pool(config).cooldowns[slot - 1] = now + config.keyCooldownMs;
 }
@@ -56,13 +70,19 @@ export async function openGemini(config, onMessage, onFailure,
     options = {}) {
   const createClient = typeof options === 'function' ? options :
     options.createClient || (apiKey => new GoogleGenAI({ apiKey }));
+  let lastFailure;
   for (let attempt = 0; attempt < config.apiKeys.length; attempt++) {
     if (options.signal?.aborted) throw new Error('Voice connection cancelled');
     const key = nextGeminiKey(config);
     try { return await connectKey(config, key, onMessage, onFailure, createClient, options); }
-    catch (error) { if (!isRateLimited(error)) throw error; }
+    catch (error) {
+      lastFailure = geminiFailureKind(error);
+      if (!retryableFailure(lastFailure)) throw error;
+    }
   }
-  throw Object.assign(new Error('Gemini key pool is rate limited'), { status: 429 });
+  throw Object.assign(new Error(lastFailure === 'rate_limited' ?
+    'Gemini key pool is rate limited' : 'Gemini key pool is unavailable'),
+  { status: lastFailure === 'rate_limited' ? 429 : 503 });
 }
 
 async function connectKey(config, key, onMessage, onFailure, createClient, options) {
@@ -77,21 +97,23 @@ async function connectKey(config, key, onMessage, onFailure, createClient, optio
   const fail = error => {
     if (closed || failed) return;
     failed = true;
-    const limited = isRateLimited(error);
-    if (limited) {
+    const kind = geminiFailureKind(error);
+    if (retryableFailure(kind)) {
       markRateLimited(config, key.slot);
-      console.info(`Gemini key slot ${key.slot}/${key.total} rate limited; cooling down`);
+      console.warn(`Gemini key slot ${key.slot}/${key.total} ${kind}; cooling down`);
     }
+    else console.warn(`Gemini key slot ${key.slot}/${key.total} ${kind}`);
     if (active) onFailure();
-    else rejectOpening(Object.assign(new Error(limited ? 'Gemini rate limited' : 'Gemini connection failed'),
-      { status: limited ? 429 : 503 }));
+    else rejectOpening(Object.assign(new Error(kind === 'rate_limited' ? 'Gemini rate limited' : 'Gemini connection failed'),
+      { kind, status: kind === 'rate_limited' ? 429 : kind === 'key_rejected' ? 403 : 503 }));
   };
   const cancelled = () => fail({});
   signal?.addEventListener('abort', cancelled, { once: true });
   const handleTools = async calls => {
-    const responses = await Promise.all(calls.slice(0, 4).map(async call => {
+    const responses = await Promise.all(calls.map(async (call, index) => {
       let response = { error: 'Unsupported tool' };
-      if (call.name === timeTool.name) {
+      if (index >= 4) response = { error: 'At most four tools can run in one request. Please request fewer tools.' };
+      else if (call.name === timeTool.name) {
         const now = new Date();
         response = { utc: now.toISOString(), india: new Intl.DateTimeFormat('en-IN', {
           timeZone: 'Asia/Kolkata', dateStyle: 'full', timeStyle: 'long',
@@ -137,7 +159,11 @@ async function connectKey(config, key, onMessage, onFailure, createClient, optio
   try { session = await Promise.race([connecting, openingFailure]); }
   catch (error) {
     closed = true;
-    if (!failed && isRateLimited(error)) markRateLimited(config, key.slot);
+    if (!failed) {
+      const kind = geminiFailureKind(error);
+      if (retryableFailure(kind)) markRateLimited(config, key.slot);
+      console.warn(`Gemini setup key slot ${key.slot}/${key.total} ${kind}`);
+    }
     throw error;
   } finally { signal?.removeEventListener('abort', cancelled); }
   if (failed) { session.close(); throw new Error('Gemini connection failed'); }
