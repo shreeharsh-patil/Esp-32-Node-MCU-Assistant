@@ -1,4 +1,4 @@
-# Backend validation — 2026-10-09
+# Backend validation — 2026-10-12
 
 Story: automatic ESP32 microphone capture reaches your authenticated Vercel
 backend, Gemini Live generates audio, and the ESP32 plays it before listening
@@ -11,11 +11,16 @@ for the next question.
 | Device audio transport | PASS locally | Real 16 kHz Opus decoded to PCM16; real 24 kHz reply encoded/decoded; final partial frame padded; TTS stop follows all packets. |
 | Turn lifecycle | PASS locally | Input ignored before start/during playback; next start resumes capture; quiet sessions receive a 20-second data heartbeat; provider failure releases the session. |
 | Bounds | PASS locally | Malformed/oversized packets, HTTP body limits, wrong negotiated audio, input rate and provider queue/text/audio limits checked. |
-| Google provider | PENDING | No real key configured or Google Live session opened in this work. Tests inject a provider double. |
-| Vercel deployment | PENDING | User will host on Vercel; no project deployed or production URL supplied. Function/WebSocket packaging has not been validated on the platform. |
-| Physical speech/playback | PENDING | New custom-backend firmware has not yet been flashed; amplifier SD is now enabled, but acoustic retest is outstanding. |
+| Google provider | PASS for two prior short live turns | Real Gemini recognized `Hello` and `Open YouTube`; both complete replies were clearly audible per owner. The latest audit revision needs another live acceptance test. |
+| Vercel deployment | PASS | Production health, authenticated discovery and real provider audio negotiation pass. Voice function runs in Mumbai (`bom1`); current deployment ID is in `VALIDATION.json`. |
+| Physical speech/playback | Latest acceptance pending | Updated COM4 firmware hashes and NVS preservation verified; device returned to Listening with zero RX/TX errors. Owner reports cracking on the earlier version; latest audible repair needs a live listen. |
 
-30 Node integration/unit tests passed with zero failures and zero skips.
+41 Node integration/unit tests passed with zero failures and zero skips.
+New regressions cover a six-second PCM burst, partial optional database setup,
+storage outages without voice interruption, fail-closed device authentication,
+rejected/transient Gemini key failover, responses for excess tool-call IDs,
+bounded startup buffering and pacing, and direct 16 kHz decoding of 24 kHz Opus.
+See `../docs/pocket/RELIABILITY_AUDIT.md` for the firmware and packaging repairs.
 The dashboard checks cover encrypted storage across fresh store instances,
 profile revisions and validation, private owner cookies and same-origin
 mutations, per-device hashed tokens and active-session revocation, transcript
@@ -38,11 +43,21 @@ Setup 429 failover, active-session quota cooldown/reconnect, an exhausted pool
 without retry requests, and late SDK session cleanup after cancellation were
 also checked with test clients. Real quota errors still require a deployed test.
 The provider boundary was checked against the installed Google SDK's types
-and current official documentation. This does not establish account access,
-provider quota, network latency, audible output or long-duration operation.
+and official documentation. The two physical live turns establish short reply
+audibility; prolonged stability, hosted memory/search and quota recovery remain
+unverified on hardware.
 
 Use `npm run check-deployment` after configuring private Production variables.
 Then run the device acceptance steps in `../docs/pocket/HARDWARE_TESTS.md`.
+
+The owner requested both faster replies and repair of gaps/distortion. Provider
+VAD now finalizes after 500 ms of silence, with 300 ms prefix padding retained.
+Playback sends up to 360 ms ahead and delays a slow start by at most 120 ms,
+without waiting for an entire answer. Safe numeric timing logs contain frame
+counts, startup delay and provider-chunk gaps. Production tests with generated
+host speech exercise recognition, real Gemini replies and 16 kHz Opus decoding;
+their timing measurements in `VALIDATION.json` do not establish physical speaker
+quality or a guaranteed response time.
 
 Provider credentials now come only from private server environment variables.
 The dashboard has no key inputs or editing controls, and API attempts to add,

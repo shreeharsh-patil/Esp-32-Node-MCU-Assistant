@@ -516,5 +516,99 @@
       "log": "docs/pocket/AUDIO_REPAIR_VOICE80_REPLAY_READY_REPEAT.log"
     },
     "firmware_sha256": "53dc69b4d017f50f4a8989bf0b41689f296cd22da96c59007eaa193f25b09d75"
+  },
+  "reliability_audit": {
+    "date": "2026-10-12",
+    "source_commits": [
+      "2866cd6",
+      "7dcd68a",
+      "30039db",
+      "c90ed35"
+    ],
+    "source_sha256": {
+      "main/application.cc": "4f1118fd7155aeede6f8f997e6d9dda5db75a2fb928284fe6313898ca360f128",
+      "main/application.h": "8908b915d127c8df17f814bb8003b35c384593817b3a0c23340d99f5a7fa5571",
+      "main/audio/audio_service.cc": "bba57ac8a0eefa29ea4c11e763d5d4c72244d2b180d256acbfc97fee758150fc",
+      "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.cc": "adb1f8585401e5d4b790c9e14ed48ffff0fc231d7b235b10334563a1748b46e5",
+      "main/boards/custom-esp32-nodemcu-pocket-ai/pocket_audio_codec.h": "1598876aacb28794df1a953eff28a6bb14574c4a34b7bcae0a49f5dfac238d62",
+      "main/boards/custom-esp32-nodemcu-pocket-ai/audio_math.h": "65b095b56dc274db9fe35280e2d1584b72dd2e66bfad3c79e61d59720ca1a3dc",
+      "backend/src/bridge.js": "d9ca938aeb969acff7172ba77f3a113fd92ace30e08aec58291ff34514889c14",
+      "backend/src/gemini.js": "05c42a20b7e5315c07a681ebb0b4566ccd0f357125015cab1a08bfb29b73d1f4",
+      "backend/src/server.js": "16c6c58413026446437a6e2e8435a46de23b88c328989a682433629bdafaf188",
+      "backend/vercel.json": "9db188f259fc79771a01d575ae98782ebf64c02230c4eb338f751ab8fe0e904f"
+    },
+    "host_tests": 117,
+    "backend_tests": 41,
+    "representative_build": "PASS: bread-compact-esp32-lcd / ESP-IDF 6.1",
+    "firmware": {
+      "conversation": {
+        "build": "PASS: ESP-IDF 6.1",
+        "image": "pocket-xiaozhi-esp32.bin",
+        "bytes": 2240096,
+        "app_bytes": 2174560,
+        "sha256": "3578396fe350cb83c4732834269d90a6a28e6633c04e3f128256b2862a232d51"
+      },
+      "diagnostics": {
+        "build": "PASS: ESP-IDF 6.1",
+        "image": "pocket-xiaozhi-esp32-diagnostics.bin",
+        "bytes": 2224928,
+        "app_bytes": 2159392,
+        "sha256": "a03d65636684e91ba824a2f237ede34cceb0b241021fb2f1f0c04f048d551505"
+      }
+    },
+    "flash": "PASS: COM4 bootloader, partition table and conversation app hashes verified",
+    "nvs_preservation": "PASS: 24576 bytes match before/after flash; no erase-all",
+    "post_flash": {
+      "state": "listening",
+      "internal_free": 46660,
+      "minimum": 22396,
+      "largest": 36864,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_capture_overruns": 0,
+      "mic_clipped_total": 0
+    },
+    "deployment": "PASS: dpl_2dg6DiB87Uzn18QcRmoGKiAzF47C READY, promoted to esp-32-node-mcu-assistant.vercel.app; function region bom1; health configured=true",
+    "latency": {
+      "scope": "Two generated host-speech trials over production, not ESP32 microphone/speaker acceptance or a response-time guarantee",
+      "region": "bom1",
+      "silence_duration_ms": 500,
+      "prefix_padding_ms": 300,
+      "playback_lead_ms": 360,
+      "maximum_startup_buffer_wait_ms": 120,
+      "trials": [
+        {
+          "test": "Synthetic host speech over production, not physical ESP32 acceptance",
+          "frames": 37,
+          "decodedSamples": 35520,
+          "maxPacketGapMs": 84,
+          "recognizedSpeech": true,
+          "replyText": true,
+          "setupMs": 4902,
+          "firstAudioAfterSpeechMs": 1651,
+          "replyDurationMs": 2220
+        },
+        {
+          "test": "Synthetic host speech over production, not physical ESP32 acceptance",
+          "frames": 55,
+          "decodedSamples": 52800,
+          "maxPacketGapMs": 341,
+          "recognizedSpeech": true,
+          "replyText": true,
+          "setupMs": 1626,
+          "firstAudioAfterSpeechMs": 1459,
+          "replyDurationMs": 3300
+        }
+      ]
+    },
+    "voice_limiter": {
+      "quiet_voice_gain": "Same volume preference and boost; no sample waveshaping",
+      "voice_peak_ceiling_percent": 65,
+      "gain_release_ms_approximate": 200,
+      "block_frames": 128,
+      "diagnostic_levels": "Preserved"
+    },
+    "latest_physical_acceptance": "PENDING: owner will test later; earlier two short replies were audible, but owner later reported both gaps and distortion",
+    "hosted_memory_search": "PENDING: Production still needs DATABASE_URL, SETTINGS_ENCRYPTION_KEY, FIRECRAWL_API_KEYS"
   }
 }

@@ -424,3 +424,22 @@ prolonged conversation stability.
 | Vercel health | PASS | Production `/health`: HTTP 200, `configured: true` |
 | Wi-Fi connectivity | PASS | Device rejoined the provisioned network after the latest flash and completed its WebSocket handshake |
 | Gemini voice conversation | PASS for two short turns | Revised backend deployed; `Hello` and `Open YouTube` each produced a complete audible reply and returned to Listening. Long-running reliability remains unverified |
+
+## Reliability and cracking update — 2026-10-12
+
+The owner subsequently reported both gaps and distortion in spoken replies.
+The latest repair adds bounded startup buffering and 360 ms of compressed
+playback lead, removes the Pocket's extra 24-to-16 kHz PCM resampler, and replaces
+the sample waveshaper with block gain limiting. Quiet speech retains its boost;
+loud words get 65% peak headroom with a slow gain release. Diagnostic tones keep
+their earlier levels and the saved volume preference is retained.
+
+The provider now uses 500 ms silence finalization and hosting in Mumbai. Both
+Pocket variants and the representative ESP32 board build; 41 backend and 117
+host tests pass. The new conversation firmware is flashed on COM4, its component
+hashes verified and 24,576 NVS bytes unchanged. Post-flash capture returned to
+Listening with zero RX/TX errors or active DMA drops. Latest audible acceptance
+is pending; earlier short-turn PASS results above are historical. Production
+synthetic speech testing measures reply latency separately from hardware
+acceptance. See [the reliability audit](RELIABILITY_AUDIT.md) and the latest
+`reliability_audit` object in `AUDIO_REPAIR_RESULTS.json`.
