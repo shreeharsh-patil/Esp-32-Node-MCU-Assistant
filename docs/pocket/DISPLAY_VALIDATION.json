@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-12",
+  "branch": "repair/st7789-display-artifacts",
+  "hardware": "ESP32-D0WD-V3, COM4, 4 MB flash, no PSRAM",
+  "panel": {
+    "firmware_controller": "ESP-IDF ST7789 family driver; physical module/revision not confirmed",
+    "native_resolution": [240, 280],
+    "landscape_resolution": [280, 240],
+    "ram_resolution_after_axis_exchange": [320, 240],
+    "visible_ram_offset": [20, 0],
+    "spi_mode": 0,
+    "spi_clock_hz": 10000000,
+    "reset_gpio": 14,
+    "reset_recovery_ms_before_sleep_out": 120,
+    "post_sleep_out_wait_ms": 120,
+    "full_controller_gram_cleared_before_display_on": true,
+    "dma_clear_row_bytes": 640,
+    "partial_framebuffer_bytes": 11200
+  },
+  "firmware_builds": {
+    "conversation": {
+      "result": "PASS: ESP-IDF 6.1 canonical board build, classic ESP32 boot/image/table hashes verified",
+      "combined_bytes": 2261744,
+      "sha256": "e1b2a2944ef28524e3b7f739b0098ca0efbcf02d1402781ba85ec92b505cb860"
+    },
+    "diagnostics": {
+      "result": "PASS: ESP-IDF 6.1 canonical offline diagnostics build, classic ESP32 image verification",
+      "combined_bytes": 2242608,
+      "sha256": "e7e6b4b91d09ab51a1aa880acafefd0f05feb669c434ec9f37d34acf7b64e3a0"
+    }
+  },
+  "software_tests": {
+    "host_tests_passed": 118,
+    "backend_tests_passed": 46,
+    "native_lvgl_face": "PASS: repeated animated partial refreshes, screen bounds and memory stability",
+    "native_lvgl_clock": "PASS: no flush for unchanged time, minute-only partial redraw and 100 clock/face transitions",
+    "native_panel_patterns": "PASS: all 67200 pixels in 10 patterns, stale content cleared, stable holds have zero redraws, no added LVGL leak",
+    "partial_vs_full_face": "PASS: all tested animation frames compare against a fresh full redraw; at most four isolated RGB565 rounded-line-cap edge pixels allowed per frame",
+    "format": "PASS: clang-format --dry-run -Werror on modified C/C++ files",
+    "firmware_checks": "PASS: conversation and offline diagnostics variants compiled with ESP-IDF 6.1"
+  },
+  "physical_install": {
+    "result": "PASS: guarded conversation image installed on COM4; bootloader, partition and app hashes verified",
+    "baud": 460800,
+    "nvs_preserved": true,
+    "nvs_bytes": 24576,
+    "driver_init_log": "PASS: ESP_OK; SPI 10 MHz; RGB565; reset wait 120 ms; 320x240 RAM black; visible 280x240 at offset 20/0",
+    "display_test_command": "PASS: all 10 serial stages transmitted for approximately 3 seconds each; test completed and previous face restored",
+    "visual_uniformity": "PENDING: Serial cannot verify whether faint lines or a shadow remain on the physical glass; owner observation is required",
+    "display_error_counters": "No TFT transfer/readback counter is provided by the write-only SPI module",
+    "audio_transfer_errors_during_capture": 0,
+    "audio_overruns_during_capture": 0,
+    "minimum_internal_free_bytes_during_test": 63760
+  },
+  "recovery_assessment": "Firmware timing and reset defects were corrected. Physical recovery remains plausible, not confirmed; persistent same-position marks after solid fills/cold starts with verified supply and wiring point toward panel glass/flex/driver damage.",
+  "pins_changed": false,
+  "audio_i2s_configuration_changed": false,
+  "full_framebuffer_added": false,
+  "prerelease_hardware_acceptance": "Pending physical visual assessment; build and image checks alone do not establish panel recovery."
+}

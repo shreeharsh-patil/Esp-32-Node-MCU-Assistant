@@ -13,6 +13,9 @@
 #define DISPLAY_CS GPIO_NUM_13
 #define DISPLAY_DC GPIO_NUM_27
 #define DISPLAY_RST GPIO_NUM_14
+// 10 MHz stays below ST7789V's 66 ns write-cycle limit and gives the
+// hand-wired module more signal margin than the previous 26 MHz setting.
+#define DISPLAY_SPI_HZ (10 * 1000 * 1000)
 // Set to 1 for the opposite landscape orientation. GPIOs stay identical.
 #define POCKET_LANDSCAPE_FLIPPED 0
 #define DISPLAY_WIDTH 280

@@ -5,6 +5,7 @@
 #include "display/lcd_display.h"
 #include "face_animation.h"
 #include "face_renderer.h"
+#include "panel_diagnostics.h"
 #include "pocket_audio_codec.h"
 
 class PocketDisplay : public SpiLcdDisplay {
@@ -32,6 +33,8 @@ public:
     void PrintUiDiagnostics() const;
     bool PreviewExpression(const char* expression);
     void ShowClock(bool show);
+    void StartDisplayTest();
+    void HoldDisplayTest(pocket::PanelPattern pattern);
     bool AddTextGlyphs(const std::vector<TextGlyph>& glyphs, uint8_t bpp) override { return false; }
     bool SupportsGuiOperations() const override { return false; }
 
@@ -42,6 +45,11 @@ private:
     std::unique_ptr<pocket::face::Renderer> renderer_;
     pocket::ClockState clock_state_;
     std::unique_ptr<pocket::ClockRenderer> clock_renderer_;
+    std::unique_ptr<pocket::PanelDiagnostics> panel_diagnostics_;
+    bool panel_test_active_ = false, panel_test_sequence_ = false;
+    bool panel_test_restore_clock_ = false, panel_test_auto_ = false;
+    unsigned panel_test_stage_ = 0;
+    uint64_t panel_test_next_ = 0;
     pocket::DisplayMode rendered_mode_ = pocket::DisplayMode::FACE;
     lv_obj_t* caption_ = nullptr;
     lv_timer_t* animation_ = nullptr;
@@ -62,6 +70,8 @@ private:
     uint64_t refresh_started_ = 0;
     void Tick();
     void UpdateClockMode();
+    void BeginPanelTest(pocket::PanelPattern pattern, bool sequence);
+    void EndPanelTest();
     void Caption(const char* text, uint32_t duration_ms = 8000, bool dialogue = false);
     static void RefreshEvent(lv_event_t* event);
 };

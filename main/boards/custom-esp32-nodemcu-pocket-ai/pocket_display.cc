@@ -35,6 +35,7 @@ PocketDisplay::~PocketDisplay() {
         lv_display_remove_event_cb_with_user_data(display_, RefreshEvent, this);
     renderer_.reset();
     clock_renderer_.reset();
+    panel_diagnostics_.reset();
     if (caption_)
         lv_obj_delete(caption_);
 }
@@ -74,6 +75,10 @@ void PocketDisplay::SetupUI() {
     lv_label_set_text_static(caption_, displayed_caption_);
     lv_obj_add_flag(caption_, LV_OBJ_FLAG_HIDDEN);
     clock_renderer_ = std::make_unique<pocket::ClockRenderer>(screen);
+    panel_diagnostics_ = std::make_unique<pocket::PanelDiagnostics>(screen);
+#if CONFIG_POCKET_HARDWARE_DIAGNOSTICS
+    panel_test_auto_ = true;
+#endif
     boot_at_ = activity_at_ = Now();
     lv_display_add_event_cb(display_, RefreshEvent, LV_EVENT_ALL, this);
     animation_ = lv_timer_create(
@@ -104,6 +109,26 @@ void PocketDisplay::Tick() {
         slow_ticks_.fetch_add(1);
     last_tick_ = now;
     ticks_.fetch_add(1);
+    if (panel_test_auto_ && now - boot_at_ >= 1650) {
+        panel_test_auto_ = false;
+        BeginPanelTest(pocket::PanelPattern::Black, true);
+    }
+    if (panel_test_active_) {
+        if (panel_test_sequence_ && now >= panel_test_next_) {
+            if (++panel_test_stage_ >= pocket::kPanelTestStages) {
+                EndPanelTest();
+            } else {
+                const auto pattern = static_cast<pocket::PanelPattern>(panel_test_stage_);
+                panel_diagnostics_->Show(pattern);
+                panel_test_next_ = now + pocket::kPanelTestHoldMs;
+                ESP_LOGI("PocketPanel", "DISPLAY TEST %u/%u: %s; hold 3s; visual result PENDING",
+                         panel_test_stage_ + 1, pocket::kPanelTestStages,
+                         pocket::PanelPatternName(pattern));
+            }
+        }
+        if (panel_test_active_)
+            return;  // UI only: audio, Wi-Fi and the application keep running.
+    }
     const bool listening = state == kDeviceStateListening || state == kDeviceStateAudioTesting;
     const uint32_t microphone = listening ? audio_->Rms() : 0;
     const uint32_t playback = audio_->PlaybackRms();
@@ -383,6 +408,8 @@ void PocketDisplay::ColorTest(bool show) {
     DisplayLockGuard lock(this);
     if (!lock || !renderer_)
         return;
+    if (panel_test_active_)
+        EndPanelTest();
     color_test_ = show;
     if (show) {
         clock_state_.Face();
@@ -448,7 +475,7 @@ void PocketDisplay::PrintUiDiagnostics() const {
 
 void PocketDisplay::UpdateClockMode() {
     const auto mode = clock_state_.Mode();
-    if (!clock_renderer_ || !renderer_ || rendered_mode_ == mode)
+    if (panel_test_active_ || !clock_renderer_ || !renderer_ || rendered_mode_ == mode)
         return;
     rendered_mode_ = mode;
     const bool clock = mode == pocket::DisplayMode::CLOCK;
@@ -464,6 +491,8 @@ void PocketDisplay::ShowClock(bool show) {
     DisplayLockGuard lock(this);
     if (!lock)
         return;
+    if (panel_test_active_)
+        EndPanelTest();
     if (show) {
         color_test_ = false;
         renderer_->ColorTest(false);
@@ -472,4 +501,50 @@ void PocketDisplay::ShowClock(bool show) {
         clock_state_.Face();
     }
     UpdateClockMode();
+}
+
+void PocketDisplay::BeginPanelTest(pocket::PanelPattern pattern, bool sequence) {
+    if (!panel_diagnostics_ || !renderer_ || !clock_renderer_)
+        return;
+    panel_test_auto_ = false;
+    if (!panel_test_active_)
+        panel_test_restore_clock_ = clock_state_.Mode() == pocket::DisplayMode::CLOCK;
+    panel_test_active_ = true;
+    panel_test_sequence_ = sequence;
+    panel_test_stage_ = static_cast<unsigned>(pattern);
+    panel_test_next_ = Now() + pocket::kPanelTestHoldMs;
+    color_test_ = false;
+    renderer_->ColorTest(false);
+    renderer_->Visible(false);
+    clock_renderer_->Visible(false);
+    lv_obj_add_flag(caption_, LV_OBJ_FLAG_HIDDEN);
+    panel_diagnostics_->Show(pattern);
+    ESP_LOGI("PocketPanel", "DISPLAY TEST %u/%u: %s; %s; visual result PENDING",
+             panel_test_stage_ + 1, pocket::kPanelTestStages, pocket::PanelPatternName(pattern),
+             sequence ? "hold 3s; automatic sequence" : "held until home/clock/displaytest");
+}
+void PocketDisplay::EndPanelTest() {
+    panel_test_active_ = panel_test_sequence_ = false;
+    panel_diagnostics_->Hide();
+    if (panel_test_restore_clock_)
+        clock_state_.Show();
+    else
+        clock_state_.Face();
+    const bool clock = panel_test_restore_clock_;
+    rendered_mode_ = clock ? pocket::DisplayMode::CLOCK : pocket::DisplayMode::FACE;
+    renderer_->Visible(!clock);
+    clock_renderer_->Visible(clock);
+    caption_until_ = 0;
+    ESP_LOGI("PocketPanel", "DISPLAY TEST ended: restored %s; physical panel result PENDING",
+             clock ? "CLOCK" : "FACE");
+}
+void PocketDisplay::StartDisplayTest() {
+    DisplayLockGuard lock(this);
+    if (lock)
+        BeginPanelTest(pocket::PanelPattern::Black, true);
+}
+void PocketDisplay::HoldDisplayTest(pocket::PanelPattern pattern) {
+    DisplayLockGuard lock(this);
+    if (lock)
+        BeginPanelTest(pattern, false);
 }

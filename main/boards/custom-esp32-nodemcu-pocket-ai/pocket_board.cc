@@ -20,6 +20,7 @@
 #include "pocket_backend.h"
 #include "pocket_clock.h"
 #include "pocket_display.h"
+#include "pocket_panel.h"
 #include "pocket_wifi.h"
 #include "system_info.h"
 #include "wifi_board.h"
@@ -43,7 +44,7 @@ public:
         io_config.cs_gpio_num = DISPLAY_CS;
         io_config.dc_gpio_num = DISPLAY_DC;
         io_config.spi_mode = 0;
-        io_config.pclk_hz = 26 * 1000 * 1000;
+        io_config.pclk_hz = DISPLAY_SPI_HZ;
         io_config.trans_queue_depth = 4;
         io_config.lcd_cmd_bits = io_config.lcd_param_bits = 8;
         if (error == ESP_OK)
@@ -55,15 +56,7 @@ public:
         if (error == ESP_OK)
             error = esp_lcd_new_panel_st7789(io, &device, &panel);
         if (error == ESP_OK)
-            error = esp_lcd_panel_reset(panel);
-        if (error == ESP_OK)
-            error = esp_lcd_panel_init(panel);
-        if (error == ESP_OK)
-            error = esp_lcd_panel_invert_color(panel, DISPLAY_INVERT);
-        if (error == ESP_OK)
-            error = esp_lcd_panel_swap_xy(panel, DISPLAY_SWAP_XY);
-        if (error == ESP_OK)
-            error = esp_lcd_panel_mirror(panel, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y);
+            error = InitializePocketPanel(io, panel);
         if (error == ESP_OK)
             display_ = new PocketDisplay(io, panel, &audio_);
         else {
@@ -306,6 +299,12 @@ private:
 #endif
         else if (strcmp(command, "colors") == 0 && display_)
             display_->ColorTest(true);
+        else if (strcmp(command, "displaytest") == 0 && display_)
+            display_->StartDisplayTest();
+        else if (strcmp(command, "display black") == 0 && display_)
+            display_->HoldDisplayTest(pocket::PanelPattern::Black);
+        else if (strcmp(command, "display white") == 0 && display_)
+            display_->HoldDisplayTest(pocket::PanelPattern::White);
         else if (strcmp(command, "home") == 0 && display_) {
             display_->ColorTest(false);
             display_->ShowClock(false);
@@ -360,6 +359,7 @@ private:
         } else
             ESP_LOGI(TAG,
                      "Commands: handsfree on/off start stop cancel setup diag info colors home "
+                     "displaytest display black/white "
                      "clock timezone IANA_NAME face NAME mic "
                      "testaudio tone [long/loud] "
                      "volume N "

@@ -78,7 +78,8 @@ def main():
     parser.add_argument('--reset', action='store_true')
     parser.add_argument('--volume', type=int, help='Set the speaker volume 0..100 before commands (writes only audio preference)')
     parser.add_argument('--command', action='append', default=[],
-                        choices=['diag', 'info', 'colors', 'home', 'clock', 'mic', 'tone', 'tone-long', 'tone-loud', 'testaudio'])
+                        choices=['diag', 'info', 'colors', 'home', 'clock', 'displaytest',
+                                 'display-black', 'display-white', 'mic', 'tone', 'tone-long', 'tone-loud', 'testaudio'])
     parser.add_argument('--output', required=True)
     parser.add_argument('--wav', type=Path, help='Export the last complete mic recording to WAV')
     parser.add_argument('--extract-only', action='store_true', help='Read --output as an existing log')
@@ -122,14 +123,14 @@ def main():
                 port.flush()
                 volume_sent = True
             if sent < len(args.command) and elapsed >= next_command_at and port.baudrate == 115200:
-                command = args.command[sent].replace('tone-long', 'tone long').replace('tone-loud', 'tone loud')
+                command = args.command[sent].replace('tone-long', 'tone long').replace('tone-loud', 'tone loud').replace('display-', 'display ')
                 marker = f'\n# HOST command {command}\n'.encode()
                 log.write(marker)
                 port.write((command + '\n').encode())
                 port.flush()
                 sent += 1
                 # mic streams five seconds at high speed, then restores 115200.
-                next_command_at = elapsed + (12 if command == 'mic' else 7 if command in ('tone long', 'tone loud')
+                next_command_at = elapsed + (32 if command == 'displaytest' else 12 if command == 'mic' else 7 if command in ('tone long', 'tone loud')
                                              else 6 if command == 'testaudio' else 4)
             data = port.read(port.in_waiting or 1)
             if data:

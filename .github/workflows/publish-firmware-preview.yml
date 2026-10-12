@@ -13,6 +13,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  backend:
+    name: Test deployed assistant backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install locked dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Check backend syntax
+        working-directory: backend
+        run: npm run build
+      - name: Run backend tests
+        working-directory: backend
+        run: npm test
+
   firmware:
     runs-on: ubuntu-latest
     container:
@@ -71,7 +91,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: firmware
+    needs: [firmware, backend]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -86,28 +106,30 @@ jobs:
         run: |
           cat > release-notes.md <<'NOTES'
           # ESP32 NodeMCU — experimental preview
-          **Not fully hardware-validated.** Only for classic ESP32 NodeMCU/WROOM-32 with 4MB flash, not ESP32-S3.
+          **Physical panel uniformity is still awaiting owner confirmation.** Firmware was installed on a classic ESP32-WROOM-32 and the ten-stage panel sequence completed. Serial confirms controller initialization and clears; it cannot tell whether a line/shadow remains on the glass. Only use on classic ESP32 NodeMCU/WROOM-32 with 4MB flash, not ESP32-S3.
 
           Assets: conversation merged image; offline diagnostics merged image; ZIP with both images and individual bootloader/partition/application files; SHA256 checksums.
 
-          **Known hardware issue:** previous speaker tone/replay tests were inaudible; physical audio is NOT yet confirmed. Current face has been observed on a device, but detailed UI and long-term tests remain incomplete. Production Vercel deployment, real Gemini Live end-to-end conversation and network recovery remain unverified.
+          **Audio:** a previous device test had cracking/stops; physical voice quality is not confirmed by this display release. Production Vercel, Neon history, generated speech recognition and Gemini Live have passed separate host checks. Those do not establish device speaker quality, latency guarantees or long-term stability.
+
+          **Display repair:** SPI reduced from 26 MHz to 10 MHz, ST7789 reset recovery increased to 120 ms, and all 320x240 controller RAM is cleared before display-on. The serial `displaytest` sequence checks black, white, RGB, checkerboard, horizontal/vertical lines and a full white-to-black clear. Black/white fills stayed available for inspection. Record results in docs/pocket/DISPLAY_VALIDATION.json.
 
           The firmware uses your own Vercel backend and private Gemini credentials; no credentials are included. OTA is disabled: firmware updates require USB.
 
-          Merged images are written at flash offset 0x0 and may overwrite saved settings. For routine credential-preserving updates use scripts/pocket_flash.py with the ZIP's individual images. Check hardware connections, power rail and the amplifier enable pin before testing.
+          The merged images at offset 0x0 are for clean installation and can erase saved settings. For a routine settings-preserving update use scripts/pocket_flash.py with the ZIP's bootloader, partition table and application files. OTA is disabled.
 
-          For setup and tests, see the repository README, docs/pocket/HARDWARE_TESTS.md and backend/README.md.
+          For setup and tests, see the repository README, docs/pocket/DISPLAY_ARTIFACTS.md, docs/pocket/HARDWARE_TESTS.md and backend/README.md.
           NOTES
       - name: Publish pre-release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG=v0.1.0-preview.1
+          TAG=v0.1.0-preview.2
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" release-assets/* --clobber
-            gh release edit "$TAG" --title "ESP32 NodeMCU Firmware v0.1.0 Preview 1" --prerelease --notes-file release-notes.md
+            gh release edit "$TAG" --title "ESP32 NodeMCU Firmware v0.1.0 Preview 2" --prerelease --notes-file release-notes.md
           else
-            gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --prerelease --title "ESP32 NodeMCU Firmware v0.1.0 Preview 1" --notes-file release-notes.md
+            gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --prerelease --title "ESP32 NodeMCU Firmware v0.1.0 Preview 2" --notes-file release-notes.md
           fi
           gh release view "$TAG" --json url,isPrerelease,assets

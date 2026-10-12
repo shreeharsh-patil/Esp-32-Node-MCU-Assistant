@@ -157,6 +157,8 @@ Read: **[Complete wiring, amplifier bias and safety notes](docs/pocket/WIRING.md
 
 The ST7789 glass is **240 × 280** natively; the firmware rotates its logical interface to **280 × 240**. To flip to the opposite landscape orientation, use the documented `POCKET_LANDSCAPE_FLIPPED` setting in [the board configuration](main/boards/custom-esp32-nodemcu-pocket-ai/config.h) and rebuild. The wiring stays the same. Display rotation and edge alignment still need to be checked on the real panel.
 
+The Pocket ST7789 now uses a conservative 10 MHz SPI clock, reset recovery, and a complete controller-memory clear before display-on. Type `displaytest` in the serial console for black/white/RGB fills, a checkerboard, row/column patterns, and clearing tests. See the [display artifact diagnosis and recovery steps](docs/pocket/DISPLAY_ARTIFACTS.md).
+
 ## 🛠️ Getting started
 
 ### Step 1 — Clone the project

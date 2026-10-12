@@ -35,6 +35,7 @@ def release_files(output=OUTPUT):
              'VALIDATION.json', 'VALIDATION.md', 'manifest.json', 'manifest-diagnostics.json',
              'index.html', 'LICENSE_INVENTORY.txt', 'host-tests.log', 'backend-tests.log',
              'regression-build.log', 'source-changes.patch', 'SHA256SUMS.txt']
+    names.append('DISPLAY_VALIDATION.json')
     paths = [output / name for name in names]
     for kind in ['conversation', 'diagnostics']:
         paths.extend(output / kind / name for name in

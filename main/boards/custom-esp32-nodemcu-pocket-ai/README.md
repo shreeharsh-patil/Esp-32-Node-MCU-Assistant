@@ -33,10 +33,16 @@ SD/MODE bias before applying power. See [electrical notes](../../../docs/pocket/
 
 The 240x280 glass now renders in **280x240 landscape**. Hardware axis exchange
 moves the centered ST7789 RAM inset to X=20, Y=0. RGB order, inversion and
-26 MHz SPI mode 0 are retained. Set `POCKET_LANDSCAPE_FLIPPED` to `1` in
+SPI mode 0 are retained. SPI now runs at 10 MHz, with a 120 ms reset recovery
+wait and a full controller-RAM black clear before display-on. Set `POCKET_LANDSCAPE_FLIPPED` to `1` in
 `config.h` for the opposite landscape direction. GPIO wiring is unchanged.
 Panel orientation and borders still require observation on the physical display.
 BLK has no software control because it is wired to 3V3.
+See [display artifact diagnosis and test procedure](../../../docs/pocket/DISPLAY_ARTIFACTS.md).
+Serial `displaytest` runs ten full-screen patterns for three seconds each, then
+restores the previous face/clock. `display black` and `display white` hold a solid
+screen; `home` or `clock` exits. The offline diagnostics variant runs this
+sequence once after its boot animation. Normal firmware never runs it automatically.
 
 I2S0 owns paired RX/TX channels at 16 kHz, Philips 32-bit stereo, 64 BCLK edges
 per WS period. Both channels share identical clocks; GPIO34's left slot is

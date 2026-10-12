@@ -8,6 +8,7 @@
 #include "clock_renderer.h"
 #include "face_animation.h"
 #include "face_renderer.h"
+#include "panel_diagnostics.h"
 
 LV_FONT_DECLARE(font_noto_sans_basic_16_4);
 using namespace pocket::face;
@@ -43,6 +44,41 @@ void Save(const std::filesystem::path& path) {
     }
     std::fclose(file);
 }
+void CheckPartialMatchesFull(lv_display_t* display, lv_obj_t* screen,
+                             const std::filesystem::path& output, const char* state,
+                             uint64_t time) {
+    const auto partial = pixels;
+    lv_obj_invalidate(screen);
+    lv_refr_now(display);
+    // LVGL's translucent rounded polyline caps can rasterize differently at
+    // two isolated edge pixels when the strip clipping rectangle changes.
+    // Bound the *total* differing pixels, with no image-wide color tolerance:
+    // a retained line or rectangular patch must fail this comparison.
+    unsigned differences = 0;
+    for (unsigned i = 0; i < pixels.size(); ++i)
+        differences += pixels[i] != partial[i];
+    const bool matches = differences <= 4;
+    if (!matches) {
+        int x1 = kWidth, y1 = kHeight, x2 = 0, y2 = 0, count = 0;
+        for (int y = 0; y < kHeight; ++y)
+            for (int x = 0; x < kWidth; ++x)
+                if (pixels[y * kWidth + x] != partial[y * kWidth + x]) {
+                    ++count;
+                    x1 = std::min(x1, x);
+                    y1 = std::min(y1, y);
+                    x2 = std::max(x2, x);
+                    y2 = std::max(y2, y);
+                }
+        std::fprintf(stderr, "Stale partial redraw: %s time=%llu pixels=%d bounds=%d,%d..%d,%d\n",
+                     state, static_cast<unsigned long long>(time), count, x1, y1, x2, y2);
+        Save(output / "panel-stale-full.ppm");
+        const auto full = pixels;
+        pixels = partial;
+        Save(output / "panel-stale-partial.ppm");
+        pixels = full;
+    }
+    assert(matches);
+}
 void CheckClock(lv_display_t* display, lv_obj_t* screen, const std::filesystem::path& output) {
     pocket::ClockRenderer clock(screen);
     Renderer face(screen);
@@ -76,6 +112,7 @@ void CheckClock(lv_display_t* display, lv_obj_t* screen, const std::filesystem::
     lv_refr_now(display);
     assert(transferred_pixels > before_pixels);
     assert(transferred_pixels - before_pixels < kWidth * kHeight);
+    CheckPartialMatchesFull(display, screen, output, "clock minute", 0);
     Save(output / "clock-minute.ppm");
     local.tm_hour = 0;
     local.tm_min = 0;
@@ -115,6 +152,74 @@ void CheckClock(lv_display_t* display, lv_obj_t* screen, const std::filesystem::
         "CLOCK LVGL PASS: unchanged time 0 flushes; minute partial redraw; 100 round trips; "
         "free=%zu max_used=%zu\n",
         final.free_size, final.max_used);
+}
+void CheckPanelDiagnostics(lv_display_t* display, lv_obj_t* screen,
+                           const std::filesystem::path& output) {
+    lv_mem_monitor_t before{};
+    lv_mem_monitor(&before);
+    {
+        pocket::PanelDiagnostics diagnostics(screen);
+        for (unsigned stage = 0; stage < pocket::kPanelTestStages; ++stage) {
+            const auto pattern = static_cast<pocket::PanelPattern>(stage);
+            // Old pixels must be overwritten, including every edge and corner.
+            pixels.fill(0x5a5a);
+            diagnostics.Show(pattern);
+            lv_tick_inc(50);
+            lv_refr_now(display);
+            for (int y = 0; y < kHeight; ++y) {
+                for (int x = 0; x < kWidth; ++x) {
+                    uint16_t expected = 0;
+                    switch (pattern) {
+                        case pocket::PanelPattern::White:
+                        case pocket::PanelPattern::ClearWhite:
+                            expected = 0xffff;
+                            break;
+                        case pocket::PanelPattern::Red:
+                            expected = 0xf800;
+                            break;
+                        case pocket::PanelPattern::Green:
+                            expected = 0x07e0;
+                            break;
+                        case pocket::PanelPattern::Blue:
+                            expected = 0x001f;
+                            break;
+                        case pocket::PanelPattern::Checkerboard:
+                            expected = (x / 16 + y / 16) % 2 == 0 ? 0xffff : 0;
+                            break;
+                        case pocket::PanelPattern::Horizontal:
+                            expected = y % 12 == 0 ? 0xffff : 0;
+                            break;
+                        case pocket::PanelPattern::Vertical:
+                            expected = x % 12 == 0 ? 0xffff : 0;
+                            break;
+                        default:
+                            break;
+                    }
+                    assert(pixels[y * kWidth + x] == expected);
+                }
+            }
+            Save(output / ("panel-" + std::to_string(stage + 1) + ".ppm"));
+            const auto flushed = flushes;
+            for (unsigned tick = 0; tick < 60; ++tick) {
+                diagnostics.Show(pattern);
+                lv_tick_inc(50);
+                lv_refr_now(display);
+            }
+            assert(flushes == flushed);  // Stable test holds do not refresh.
+        }
+        diagnostics.Hide();
+        lv_tick_inc(50);
+        lv_refr_now(display);
+        for (const auto pixel : pixels)
+            assert(pixel == 0);  // Opaque normal screen restored, no test bars.
+    }
+    lv_tick_inc(50);
+    lv_refr_now(display);
+    lv_mem_monitor_t after{};
+    lv_mem_monitor(&after);
+    assert(after.free_size >= before.free_size);
+    std::puts(
+        "PANEL LVGL PASS: all 67200 pixels of 10 patterns; no hold redraw; full clear; no leak");
 }
 }  // namespace
 
@@ -176,6 +281,7 @@ int main(int argc, char** argv) {
                     renderer.Draw(f);
                     lv_tick_inc(33);
                     lv_refr_now(display);
+                    CheckPartialMatchesFull(display, screen, output, state.name, now);
                     // Full opaque black remains at every edge during all
                     // expressions and partial redraws, including boot fades.
                     for (int x = 0; x < kWidth; ++x) {
@@ -247,6 +353,7 @@ int main(int argc, char** argv) {
         "create/destroy stable_free=%zu\n",
         flushes, static_cast<unsigned long long>(transferred_pixels), stable_free);
     CheckClock(display, screen, output);
+    CheckPanelDiagnostics(display, screen, output);
     lv_display_delete(display);
     lv_deinit();
 }

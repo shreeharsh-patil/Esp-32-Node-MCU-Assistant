@@ -10,6 +10,7 @@ add_subdirectory("${POCKET_ROOT}/managed_components/lvgl__lvgl" lvgl)
 set(POCKET_BOARD "${POCKET_ROOT}/main/boards/custom-esp32-nodemcu-pocket-ai")
 add_executable(pocket_ui_sim main.cpp "${POCKET_BOARD}/face_renderer.cc"
     "${POCKET_BOARD}/clock_renderer.cc" "${POCKET_BOARD}/clock_digits.c"
+    "${POCKET_BOARD}/panel_diagnostics.cc"
     "${POCKET_ROOT}/managed_components/78__xiaozhi-fonts/src/font_noto_sans_basic_16_4.c")
 target_include_directories(pocket_ui_sim PRIVATE "${POCKET_BOARD}")
 target_link_libraries(pocket_ui_sim PRIVATE lvgl::lvgl)

@@ -15,7 +15,7 @@ for the next question.
 | Vercel deployment | PASS | Production health, authenticated discovery and real provider audio negotiation pass. Voice function runs in Mumbai (`bom1`); current deployment ID is in `VALIDATION.json`. |
 | Physical speech/playback | Latest acceptance pending | Updated COM4 firmware hashes and NVS preservation verified; device returned to Listening with zero RX/TX errors. Owner reports cracking on the earlier version; latest audible repair needs a live listen. |
 
-45 Node integration/unit tests passed with zero failures and zero skips.
+46 Node integration/unit tests passed with zero failures and zero skips.
 New regressions cover a six-second PCM burst, partial optional database setup,
 storage outages without voice interruption, fail-closed device authentication,
 rejected/transient Gemini key failover, responses for excess tool-call IDs,
@@ -26,8 +26,13 @@ profile revisions and validation, private owner cookies and same-origin
 mutations, per-device hashed tokens and active-session revocation, transcript
 filtering/deletion, history opt-out and bounded asynchronous writes. Saved
 voice/instructions reach an authenticated WebSocket provider session.
-Database tests use pg-mem; production uses Neon. A deployed Neon connection
-is still pending, and SQL emulator results do not establish hosted persistence.
+Database tests use pg-mem; production uses Neon. Production was separately
+checked after the database environment variables were added: the real Neon
+schema/profile/runtime batch completed in 813 ms in a local connection test,
+and the promoted deployment reported healthy and configured. A generated
+current-time voice turn was saved in encrypted Neon history and then read back
+through the signed admin dashboard for the paired device identity. The turn
+used generated host speech; it does not establish microphone or speaker quality.
 
 Browser verification covered sign-in, assistant voice/instructions save and
 reload, read-only masked provider status, device creation, token clearing
@@ -71,4 +76,4 @@ and `.env.local` override checks. These checks use test values only.
 
 Clock update: 45 backend tests pass. Device timezone metadata is optional and validated; the current-time tool returns the same configured local time as the clock. Per-turn STT fragments are assembled before delivery. Midnight and US DST cases are covered. Physical voice/display acceptance remains pending. See `../docs/pocket/CLOCK_UI.md`.
 
-Live clock check: generated host speech asking the current time produced the correct Asia/Kolkata reply and 34 Opus frames. The owner confirms the physical clock is visible. Production still needs DATABASE_URL for saved history; SETTINGS_ENCRYPTION_KEY has been added privately. A new capture token bucket accepts the firmware's bounded 40-frame network burst without removing the sustained rate limit; hardware acceptance remains pending.
+Live clock check: generated host speech asking the current time produced the correct Asia/Kolkata reply and 34 Opus frames. The owner confirms the physical clock is visible. Production Neon history now saves and reads back through the admin dashboard. A new capture token bucket accepts the firmware's bounded 40-frame network burst without removing the sustained rate limit; current physical speech quality still needs an audible device test.
