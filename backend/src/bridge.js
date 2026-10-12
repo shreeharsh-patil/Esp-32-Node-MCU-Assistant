@@ -3,7 +3,8 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 const FRAME_SAMPLES = 1440; // 60 ms at the provider's 24 kHz output rate.
 const FRAME_MS = 60;
-const PLAYBACK_LEAD_MS = 180; // Let the ESP32 buffer a few frames across Wi-Fi jitter.
+const PLAYBACK_LEAD_MS = 360; // Six compressed frames, within the ESP32's 20-frame queue.
+const STARTUP_WAIT_MS = 120; // Bound extra first-audio latency when the provider starts slowly.
 const FRAME_BYTES = FRAME_SAMPLES * 2;
 const MAX_PACKET = OpusScript.MAX_PACKET_SIZE;
 const MAX_PCM_CHUNK = 65536;
@@ -21,8 +22,10 @@ export function validHello(message) {
 }
 
 export class VoiceBridge {
-  constructor(ws) {
+  constructor(ws, timing = {}) {
     this.ws = ws;
+    this.now = timing.now || Date.now;
+    this.sleep = timing.sleep || sleep;
     this.decoder = new OpusScript(16000, 1, OpusScript.Application.VOIP);
     this.encoder = new OpusScript(24000, 1, OpusScript.Application.VOIP);
     this.encoder.setBitrate(24000);
@@ -35,6 +38,12 @@ export class VoiceBridge {
     this.closed = false;
     this.provider = null;
     this.nextAudioAt = 0;
+    this.replyPrimed = false;
+    this.replyFrames = 0;
+    this.firstProviderAudioAt = null;
+    this.lastProviderAudioAt = null;
+    this.maxProviderGapMs = 0;
+    this.startupMs = 0;
     this.inputWindow = Date.now();
     this.inputFrames = 0;
     this.worker = this.run();
@@ -86,7 +95,7 @@ export class VoiceBridge {
       if (part.inlineData.data.length > Math.ceil(MAX_PCM_CHUNK / 3) * 4) throw new Error('Provider audio too large');
       const pcm = Buffer.from(part.inlineData.data, 'base64');
       if (!pcm.length || pcm.length > MAX_PCM_CHUNK || pcm.length % 2) throw new Error('Invalid provider PCM');
-      events.push({ kind: 'audio', pcm });
+      events.push({ kind: 'audio', pcm, receivedAt: this.now() });
     }
     if (content.interrupted) events.push({ kind: 'interrupted' });
     if (content.turnComplete) events.push({ kind: 'complete' });
@@ -105,23 +114,50 @@ export class VoiceBridge {
     if (this.speaking) return;
     this.speaking = true;
     this.listening = false;
+    this.nextAudioAt = this.now() - PLAYBACK_LEAD_MS;
+    this.replyPrimed = false;
+    this.replyFrames = 0;
+    this.firstProviderAudioAt = this.lastProviderAudioAt = null;
+    this.maxProviderGapMs = this.startupMs = 0;
     this.provider?.finishInput();
     this.sendJson({ type: 'tts', state: 'start' });
+  }
+
+  async primeReply() {
+    if (this.replyPrimed) return;
+    this.replyPrimed = true;
+    const deadline = this.now() + STARTUP_WAIT_MS;
+    // Accumulate compressed playback headroom before starting a slow trickle.
+    // A ready burst or a completed short reply starts immediately. Never wait
+    // for the entire reply, and cancellation still releases the worker.
+    while (!this.closed && this.now() < deadline) {
+      let bytes = this.pcm.length;
+      let complete = false;
+      for (const event of this.queue) {
+        if (event.kind === 'complete' || event.kind === 'interrupted') { complete = true; break; }
+        if (event.kind === 'audio') bytes += event.pcm.length;
+      }
+      if (complete || bytes >= FRAME_BYTES * (PLAYBACK_LEAD_MS / FRAME_MS)) break;
+      await this.sleep(Math.min(10, deadline - this.now()));
+    }
   }
 
   async sendFrame(pcm) {
     if (this.closed) return;
     // An exactly real-time sender leaves no audio ready when a Wi-Fi packet is
-    // late. Start each burst up to three frames ahead, then pace the stream.
+    // late. Start each burst up to six frames ahead, then pace the stream.
     // Clamp the lead after provider pauses so a large reply cannot flood the
     // ESP32's bounded decode queue.
-    const now = Date.now();
+    const now = this.now();
     this.nextAudioAt = Math.max(this.nextAudioAt, now - PLAYBACK_LEAD_MS);
     const wait = this.nextAudioAt - now;
-    if (wait > 0) await sleep(wait);
+    if (wait > 0) await this.sleep(wait);
     if (this.closed) return;
     if (this.ws.bufferedAmount > 65536) throw new Error('Device output backpressure');
     this.ws.send(this.encoder.encode(pcm, FRAME_SAMPLES));
+    if (this.replyFrames++ === 0 && this.firstProviderAudioAt !== null) {
+      this.startupMs = Math.max(0, this.now() - this.firstProviderAudioAt);
+    }
     this.nextAudioAt += FRAME_MS;
   }
 
@@ -140,7 +176,12 @@ export class VoiceBridge {
           this.sendJson({ type: 'tts', state: 'sentence_start', text: Array.from(event.text).slice(0, TEXT_LIMIT).join('') });
         } else if (event.kind === 'audio') {
           this.startReply();
+          this.firstProviderAudioAt ??= event.receivedAt;
+          if (this.lastProviderAudioAt !== null) this.maxProviderGapMs = Math.max(
+            this.maxProviderGapMs, event.receivedAt - this.lastProviderAudioAt);
+          this.lastProviderAudioAt = event.receivedAt;
           this.pcm = Buffer.concat([this.pcm, event.pcm]);
+          await this.primeReply();
           while (this.pcm.length >= FRAME_BYTES && !this.closed) {
             const frame = this.pcm.subarray(0, FRAME_BYTES);
             this.pcm = this.pcm.subarray(FRAME_BYTES);
@@ -156,6 +197,10 @@ export class VoiceBridge {
             await this.sendFrame(padded);
           }
           if (this.speaking) this.sendJson({ type: 'tts', state: 'stop' });
+          if (this.replyFrames) console.info('Voice reply timing', {
+            frames: this.replyFrames, startupMs: this.startupMs, maxProviderGapMs: this.maxProviderGapMs,
+          });
+          this.replyFrames = 0;
           this.speaking = false;
           this.playbackDrainUntil = Date.now() + 1000;
           // Firmware sends listen/start after its playback queue drains.

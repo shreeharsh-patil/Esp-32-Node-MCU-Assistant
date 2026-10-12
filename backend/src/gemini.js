@@ -138,7 +138,7 @@ async function connectKey(config, key, onMessage, onFailure, createClient, optio
       inputAudioTranscription: {},
       outputAudioTranscription: {},
       realtimeInputConfig: {
-        automaticActivityDetection: { disabled: false, prefixPaddingMs: 300, silenceDurationMs: 700 },
+        automaticActivityDetection: { disabled: false, prefixPaddingMs: 300, silenceDurationMs: 500 },
         activityHandling: ActivityHandling.NO_INTERRUPTION,
       },
     },

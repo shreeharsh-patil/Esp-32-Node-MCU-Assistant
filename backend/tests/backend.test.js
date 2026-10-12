@@ -179,7 +179,9 @@ test('real Opus capture and playback cross the bridge, stay half-duplex, and res
   assert.equal(f.capture[0].length, 1920);
   assert.ok(f.capture[0].some(value => value !== 0));
   f.reply({ inputTranscription: { text: 'Hello' }, outputTranscription: { text: 'Hi Shreeharsh' },
-    modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: tone(10000, 24000).toString('base64') } }] },
+    // Longer than the playback lead, so the feedback attempt lands while the
+    // server is actively streaming rather than after a fully buffered reply.
+    modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: tone(24000, 24000).toString('base64') } }] },
     turnComplete: true });
   await until(() => messages.some(message => message.type === 'tts' && message.state === 'start'));
   ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'auto' }));
@@ -187,7 +189,7 @@ test('real Opus capture and playback cross the bridge, stay half-duplex, and res
   await until(() => messages.some(message => message.type === 'tts' && message.state === 'stop'));
   assert.equal(f.capture.length, 1);
   const audio = messages.filter(Buffer.isBuffer);
-  assert.equal(audio.length, 7); // Last partial 60ms frame is padded.
+  assert.equal(audio.length, 17); // Last partial 60ms frame is padded.
   for (const packet of audio) assert.equal(speaker.decode(packet).length, 2880);
   assert.equal(messages.at(-1).state, 'stop');
   assert.ok(messages.findIndex(message => message.type === 'tts' && message.state === 'start') < messages.findIndex(Buffer.isBuffer));
@@ -218,6 +220,63 @@ test('session renewal lets a reply finish before closing the device socket', asy
   const [code] = await closed;
   assert.equal(code, 1000);
   assert.equal(messages.filter(Buffer.isBuffer).length, 17);
+});
+
+test('playback primes slow provider chunks within 120 ms and skips delay for ready or complete replies', async () => {
+  let now = 1000;
+  const waits = [];
+  const bridge = new VoiceBridge({ readyState: 1, bufferedAmount: 0, send() {}, close() {} }, {
+    now: () => now, sleep: async milliseconds => { waits.push(milliseconds); now += milliseconds; },
+  });
+  bridge.pcm = tone(1440, 24000);
+  bridge.startReply();
+  await bridge.primeReply();
+  assert.equal(now, 1120);
+  assert.equal(waits.length, 12);
+  bridge.startReply(); // A still-active reply does not re-prime.
+  await bridge.primeReply();
+  assert.equal(now, 1120);
+  bridge.speaking = false;
+  bridge.startReply();
+  bridge.queue.push({ kind: 'audio', pcm: tone(7200, 24000) });
+  await bridge.primeReply();
+  assert.equal(now, 1120); // Six frames available: no added delay.
+  bridge.speaking = false;
+  bridge.startReply();
+  bridge.queue = [{ kind: 'complete' }];
+  await bridge.primeReply();
+  assert.equal(now, 1120); // A one-frame completed answer plays immediately.
+  bridge.destroy();
+  await bridge.worker;
+});
+
+test('paced Opus stays bounded across provider pauses and decodes directly at the device 16 kHz rate', async () => {
+  let now = 1000;
+  const sent = [];
+  const ws = { readyState: 1, bufferedAmount: 0, send: packet => {
+    if (Buffer.isBuffer(packet)) sent.push({ at: now, packet });
+  }, close() {} };
+  const bridge = new VoiceBridge(ws, { now: () => now, sleep: async ms => { now += ms; } });
+  const decoder = new OpusScript(16000, 1, OpusScript.Application.VOIP);
+  try {
+    bridge.startReply();
+    for (let i = 0; i < 18; i++) await bridge.sendFrame(tone(1440, 24000));
+    assert.equal(sent.filter(frame => frame.at === 1000).length, 7);
+    assert.equal(now, 1660); // 1080 ms speech sent with only a bounded 360 ms lead.
+    for (const frame of sent) {
+      const decoded = decoder.decode(frame.packet);
+      assert.equal(decoded.length, 1920); // 960 samples, no separate resampler.
+      assert.ok(decoded.some(value => value !== 0));
+    }
+    now += 3000; // A provider stall never creates an unlimited catch-up burst.
+    const resumedAt = now;
+    for (let i = 0; i < 18; i++) await bridge.sendFrame(tone(1440, 24000));
+    assert.equal(sent.filter(frame => frame.at === resumedAt).length, 7);
+    assert.equal(now, resumedAt + 660);
+  } finally {
+    bridge.destroy(); decoder.delete();
+    await bridge.worker;
+  }
 });
 
 test('a six-second provider burst finishes instead of overflowing the old audio queue', async t => {

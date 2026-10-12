@@ -138,6 +138,8 @@ test('Live connections use different keys, retain one key per session, and clean
     clients.push(record);
     return { live: { async connect(options) {
       assert.equal(options.config.realtimeInputConfig.automaticActivityDetection.disabled, false);
+      assert.equal(options.config.realtimeInputConfig.automaticActivityDetection.silenceDurationMs, 500);
+      assert.equal(options.config.realtimeInputConfig.automaticActivityDetection.prefixPaddingMs, 300);
       return { sendRealtimeInput: message => record.sent.push(message), close: () => record.closes++ };
     } } };
   };

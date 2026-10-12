@@ -530,6 +530,16 @@ void AudioService::OpusCodecTask() {
 }
 
 void AudioService::SetDecodeSampleRate(int sample_rate, int frame_duration) {
+    // Opus supports decoding a 24 kHz stream directly at 16 kHz. The custom
+    // backend's small half-duplex board can avoid a second PCM allocation and
+    // sample-rate conversion on every frame. Preserve other transports' rates.
+    if (Board::GetInstance().UsesCustomBackend()) {
+        const int output_rate = codec_->output_sample_rate();
+        if (output_rate == 8000 || output_rate == 12000 || output_rate == 16000 ||
+            output_rate == 24000 || output_rate == 48000) {
+            sample_rate = output_rate;
+        }
+    }
     if (decoder_sample_rate_ == sample_rate && decoder_duration_ms_ == frame_duration) {
         return;
     }
@@ -550,13 +560,13 @@ void AudioService::SetDecodeSampleRate(int sample_rate, int frame_duration) {
     decoder_frame_size_ = decoder_sample_rate_ / 1000 * frame_duration;
 
     auto codec = Board::GetInstance().GetAudioCodec();
+    if (output_resampler_ != nullptr) {
+        esp_ae_rate_cvt_close(output_resampler_);
+        output_resampler_ = nullptr;
+    }
     if (decoder_sample_rate_ != codec->output_sample_rate()) {
         ESP_LOGI(TAG, "Resampling audio from %d to %d", decoder_sample_rate_,
                  codec->output_sample_rate());
-        if (output_resampler_ != nullptr) {
-            esp_ae_rate_cvt_close(output_resampler_);
-            output_resampler_ = nullptr;
-        }
         esp_ae_rate_cvt_cfg_t output_resampler_cfg =
             RATE_CVT_CFG(decoder_sample_rate_, codec->output_sample_rate(), ESP_AUDIO_MONO);
         auto resampler_ret = esp_ae_rate_cvt_open(&output_resampler_cfg, &output_resampler_);

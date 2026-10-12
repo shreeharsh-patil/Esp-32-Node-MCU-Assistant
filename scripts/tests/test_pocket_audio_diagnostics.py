@@ -24,6 +24,81 @@ def recording():
 
 
 class AudioDiagnosticsTests(unittest.TestCase):
+    def test_custom_opus_output_avoids_extra_resampling_and_legacy_rates_are_preserved(self):
+        compiler = shutil.which('g++')
+        if not compiler:
+            self.skipTest('native C++ compiler not installed')
+        source = (ROOT / 'main/audio/audio_service.cc').read_text(encoding='utf-8')
+        start = source.index('void AudioService::SetDecodeSampleRate(')
+        method = source[start:source.index('\nvoid AudioService::PushTaskToEncodeQueue(', start)]
+        fixture = r'''
+#include <cassert>
+#include <mutex>
+constexpr int ESP_AUDIO_MONO=1;
+const char* TAG="test";
+template <class... Args> void log(Args...) {}
+#define ESP_LOGE(...) log(__VA_ARGS__)
+#define ESP_LOGI(...) log(__VA_ARGS__)
+struct esp_opus_dec_cfg_t { int rate, duration; };
+struct esp_ae_rate_cvt_cfg_t { int input, output, channels; };
+#define OPUS_DEC_CFG(rate, duration) esp_opus_dec_cfg_t{rate, duration}
+#define RATE_CVT_CFG(input, output, channels) esp_ae_rate_cvt_cfg_t{input, output, channels}
+int opens=0, resamplers=0, closed_resamplers=0, last_rate=0;
+int esp_opus_dec_open(const esp_opus_dec_cfg_t* cfg, unsigned, void** decoder) {
+    ++opens; last_rate=cfg->rate; *decoder=reinterpret_cast<void*>(1); return 0;
+}
+void esp_opus_dec_close(void*) {}
+int esp_ae_rate_cvt_open(const esp_ae_rate_cvt_cfg_t*, void** resampler) {
+    ++resamplers; *resampler=reinterpret_cast<void*>(2); return 0;
+}
+void esp_ae_rate_cvt_close(void*) { ++closed_resamplers; }
+struct Codec { int rate=16000; int output_sample_rate() { return rate; } };
+struct Board {
+    bool custom=true;
+    Codec codec;
+    static Board& GetInstance() { static Board board; return board; }
+    bool UsesCustomBackend() { return custom; }
+    Codec* GetAudioCodec() { return &codec; }
+};
+class AudioService {
+public:
+    Codec* codec_=&Board::GetInstance().codec;
+    int decoder_sample_rate_=16000, decoder_duration_ms_=60, decoder_frame_size_=960;
+    void* opus_decoder_=reinterpret_cast<void*>(1);
+    void* output_resampler_=nullptr;
+    std::mutex decoder_mutex_;
+    void SetDecodeSampleRate(int, int);
+};
+'''
+        checks = r'''
+int main() {
+    AudioService service;
+    service.SetDecodeSampleRate(24000, 60);
+    assert(opens == 0 && resamplers == 0 && service.decoder_frame_size_ == 960);
+    service.SetDecodeSampleRate(24000, 40);
+    assert(opens == 1 && last_rate == 16000 && service.decoder_frame_size_ == 640);
+    assert(resamplers == 0);
+    Board::GetInstance().custom=false;
+    service.SetDecodeSampleRate(24000, 60);
+    assert(opens == 2 && last_rate == 24000 && service.decoder_frame_size_ == 1440);
+    assert(resamplers == 1);
+    Board::GetInstance().custom=true;
+    service.SetDecodeSampleRate(24000, 60);
+    assert(opens == 3 && last_rate == 16000 && service.decoder_frame_size_ == 960);
+    assert(closed_resamplers == 1 && service.output_resampler_ == nullptr);
+    // Unsupported native rates retain the established conversion path.
+    Board::GetInstance().codec.rate=44100;
+    service.SetDecodeSampleRate(24000, 60);
+    assert(last_rate == 24000 && resamplers == 2);
+}
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            cpp, exe = Path(directory) / 'native-rate.cpp', Path(directory) / 'native-rate.exe'
+            cpp.write_text(fixture + method + checks, encoding='utf-8')
+            subprocess.run([compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror',
+                            str(cpp), '-o', str(exe)], check=True)
+            subprocess.run([str(exe)], check=True)
+
     def test_burst_reply_packets_survive_before_main_task_and_short_reply_resumes_capture(self):
         compiler = shutil.which('g++')
         if not compiler:
