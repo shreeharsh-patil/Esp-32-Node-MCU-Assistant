@@ -1245,4 +1245,3 @@ lv_font_t pocket_clock_digits_64 = {
 
 
 #endif /*#if POCKET_CLOCK_DIGITS_64*/
-

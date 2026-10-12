@@ -73,6 +73,7 @@ Explore the [individual expression previews](docs/pocket/ui-preview/) and the [f
 
 | | Feature | Details |
 |:--:|---|---|
+| 🕘 | **Voice-controlled clock** | Say “show time” for a dynamic gradient clock; it stays until new user speech. [Setup and verification](docs/pocket/CLOCK_UI.md) |
 | 🎙️ | **Hands-free listening** | Automatically starts listening when the device is online and backend-ready; resumes after reply playback |
 | 🧠 | **Gemini Live integration** | Custom backend translates voice traffic between the device's Opus stream and Gemini Live |
 | 👀 | **Expressive animated UI** | Landscape face, pink cheeks, blinking, gaze and audio-responsive expressions |

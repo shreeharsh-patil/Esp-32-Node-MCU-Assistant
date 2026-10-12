@@ -24,4 +24,4 @@ if __name__ == '__main__':
     source = target.read_text(encoding='utf-8').replace(' * Size: 64 px',
         ' * Montserrat Bold, SIL Open Font License (see CLOCK_FONT_LICENSE.txt).\n'
         ' * Generated with lv_font_conv@1.5.3; see scripts/pocket_clock_font.py.\n * Size: 64 px')
-    target.write_text(source, encoding='utf-8')
+    target.write_text(source.rstrip() + '\n', encoding='utf-8')
