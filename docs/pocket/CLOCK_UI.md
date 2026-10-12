@@ -35,7 +35,8 @@ thinking, speaking, emotional and blinking animations and opaque black root.
 The classic ESP32's `LiteAudioEngine` has no local semantic VAD or wake-word in
 this configuration. A sustained RMS gate therefore supplies the early display
 transition: 100 ms of fresh captured energy above an adaptive noise threshold,
-after 200 ms of quiet arming. Short clicks/stale buffers are ignored. Playback
+after 200 ms of quiet arming. Each capture start first learns the room level
+for 650 ms so the microphone startup ramp cannot masquerade as new speech. Short clicks/stale buffers are ignored. Playback
 state, nonempty output queues, and a 500 ms output tail suppress this gate.
 Transcribed user text is the definitive fallback. This is an energy detector,
 not a guarantee that arbitrary environmental noise can never dismiss the clock.
@@ -79,7 +80,8 @@ existing rotation/offsets and 11,200-byte partial strip. The clock creates three
 LVGL objects. The 64px Montserrat Bold numeric subset is stored in flash with
 its SIL license; regenerate it with `python scripts/pocket_clock_font.py`.
 Anti-aliased glyphs are drawn through bounded 8px cyan/purple/magenta clipping
-bands. Two background gradients and subtle arcs use ordinary LVGL primitives.
+bands. Richer blue and violet/magenta background gradients, sampled in 2px bands,
+and subtle arcs use ordinary LVGL primitives.
 There is no canvas/full-frame allocation, image decoder or runtime font load.
 
 The clock is polled at 20 Hz for microphone detection, but unchanged text

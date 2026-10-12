@@ -115,6 +115,7 @@ public:
     // stale capture block, or mistake listening-state entry for user speech.
     void Observe(uint64_t now, bool listening, bool playback, uint32_t rms, uint32_t frames) {
         if (playback || !listening) {
+            was_listening_ = false;
             quiet_since_ = loud_since_ = 0;
             if (playback) {
                 blocked_until_ = now + 500;
@@ -126,6 +127,19 @@ public:
         if (frames == last_frames_ || now < blocked_until_)
             return;
         last_frames_ = frames;
+        if (!was_listening_) {
+            was_listening_ = true;
+            learn_until_ = now + 650;
+            armed_ = false;
+        }
+        // Capture starts with near-zero/stale RMS before the INMP441 settles.
+        // Learn the real room level first, otherwise that startup ramp could
+        // dismiss a clock without any user speech (observed on the device).
+        if (now < learn_until_) {
+            noise_ = (noise_ * 3 + std::min<uint32_t>(rms, 5000)) / 4;
+            quiet_since_ = loud_since_ = 0;
+            return;
+        }
         const uint32_t threshold = std::max<uint32_t>(450, noise_ * 3 + 100);
         if (rms < threshold) {
             noise_ = (noise_ * 31 + std::min<uint32_t>(rms, 1500)) / 32;
@@ -147,9 +161,9 @@ public:
 
 private:
     DisplayMode mode_ = DisplayMode::FACE;
-    bool armed_ = false;
+    bool armed_ = false, was_listening_ = false;
     uint32_t noise_ = 80, last_frames_ = 0;
-    uint64_t quiet_since_ = 0, loud_since_ = 0, blocked_until_ = 0;
+    uint64_t quiet_since_ = 0, loud_since_ = 0, blocked_until_ = 0, learn_until_ = 0;
 };
 
 struct ClockZone {

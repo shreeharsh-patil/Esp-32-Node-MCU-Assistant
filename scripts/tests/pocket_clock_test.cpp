@@ -27,11 +27,22 @@ int main() {
         assert(state.Mode() == DisplayMode::CLOCK);
     }
     state.Show();
+    state.Observe(89999000, true, false, 70, 90);
+    state.Observe(89999700, true, false, 70, 95);
     state.Observe(90000000, true, false, 70, 100);
     state.Observe(90000250, true, false, 80, 200);
     state.Observe(90000300, true, false, 2000, 300);
     state.Observe(90000380, true, false, 70, 400);  // A short noise/click is ignored.
     assert(state.Mode() == DisplayMode::CLOCK);
+    ClockState room;
+    room.Show();
+    for (uint32_t frame = 1; frame <= 100; ++frame) {
+        room.Observe(10000 + frame * 50, true, false, frame < 4 ? 0 : 1200, frame);
+        assert(room.Mode() == DisplayMode::CLOCK);  // Capture warmup and measured room noise.
+    }
+    room.Observe(15100, true, false, 4200, 101);
+    room.Observe(15250, true, false, 4200, 102);
+    assert(room.Mode() == DisplayMode::FACE);
     state.Observe(90000400, true, false, 2000, 500);
     state.Observe(90000600, true, false, 2000, 500);  // Stale samples do not trigger.
     assert(state.Mode() == DisplayMode::CLOCK);

@@ -73,19 +73,21 @@ void ClockRenderer::Background(lv_event_t* event) {
     auto* layer = lv_event_get_layer(event);
     lv_area_t bounds;
     lv_obj_get_coords(lv_event_get_target_obj(event), &bounds);
-    // Eight-pixel horizontal bands with two smooth horizontal gradients.
+    // Two-pixel horizontal bands with two smooth horizontal gradients.
     // Only bands intersecting this partial strip become draw tasks.
-    for (int y = 0; y < kHeight; y += 8) {
-        const float dy = (y + 4 - 119) / 82.0f;
-        const unsigned strength = static_cast<unsigned>(150 * std::exp(-dy * dy));
+    for (int y = 0; y < kHeight; y += 2) {
+        if (bounds.y1 + y > layer->_clip_area.y2 || bounds.y1 + y + 1 < layer->_clip_area.y1)
+            continue;
+        const float dy = (y + 1 - 116) / 74.0f;
+        const unsigned strength = static_cast<unsigned>(185 * std::exp(-dy * dy));
         for (int side = 0; side < 2; ++side) {
             lv_area_t area = {bounds.x1 + side * 140, bounds.y1 + y, bounds.x1 + side * 140 + 139,
-                              bounds.y1 + y + 7};
+                              bounds.y1 + y + 1};
             if (!Intersects(area, layer->_clip_area))
                 continue;
             lv_draw_rect_dsc_t rect;
             lv_draw_rect_dsc_init(&rect);
-            const auto glow = lv_color_hex(Mix(kNavy, side ? 0x6507a0 : 0x00599a, strength));
+            const auto glow = lv_color_hex(Mix(kNavy, side ? 0x920ddb : 0x0558df, strength));
             rect.bg_color = side ? lv_color_hex(kNavy) : glow;
             rect.bg_grad.dir = LV_GRAD_DIR_HOR;
             rect.bg_grad.stops_count = 2;
@@ -100,8 +102,8 @@ void ClockRenderer::Background(lv_event_t* event) {
         lv_draw_arc_dsc_init(&arc);
         arc.center = {bounds.x1 + 140, bounds.y1 + 122};
         arc.radius = 125;
-        arc.width = 2;
-        arc.color = lv_color_hex(side ? 0x3a0d61 : 0x083259);
+        arc.width = 1;
+        arc.color = lv_color_hex(side ? 0x391454 : 0x0b2b59);
         arc.start_angle = side ? 285 : 155;
         arc.end_angle = side ? 345 : 215;
         lv_draw_arc(layer, &arc);
