@@ -195,9 +195,18 @@ export function createBackend(config, providerFactory = openGemini, options = {}
         else bridge.handleControl(JSON.parse(data.toString()));
       } catch (error) {
         const status = Number(error?.status);
+        // Log only known protocol failures, never SDK errors or client text.
+        const reason = ({
+          'Invalid audio size': 'invalid_audio_size',
+          'Audio rate limit': 'input_rate_limit',
+          'Expected a 60ms mono frame': 'invalid_frame_duration',
+          'Voice provider not ready': 'provider_not_ready',
+          'Client hello required': 'client_hello_required',
+          'Unsupported audio parameters': 'unsupported_audio_parameters',
+        })[error?.message] || 'unexpected_error';
         console.error('Voice connection failed', bridge?.provider ? 'audio_or_control' :
           opening ? 'provider_setup' : 'client_hello',
-          Number.isInteger(status) && status >= 400 && status <= 599 ? status : 'unknown');
+          Number.isInteger(status) && status >= 400 && status <= 599 ? status : 'unknown', reason);
         ws.close(1011, 'Voice connection failed');
       }
     });
