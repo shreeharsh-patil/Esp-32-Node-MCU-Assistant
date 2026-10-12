@@ -609,6 +609,19 @@
       "diagnostic_levels": "Preserved"
     },
     "latest_physical_acceptance": "PENDING: owner will test later; earlier two short replies were audible, but owner later reported both gaps and distortion",
-    "hosted_memory_search": "PENDING: Production still needs DATABASE_URL, SETTINGS_ENCRYPTION_KEY, FIRECRAWL_API_KEYS"
+    "hosted_memory_search": "PENDING: Production still needs DATABASE_URL, SETTINGS_ENCRYPTION_KEY, FIRECRAWL_API_KEYS",
+    "later_runtime_snapshot": {
+      "uptime_ms": 397505,
+      "state": "listening",
+      "internal_free": 47716,
+      "minimum": 22396,
+      "largest": 43008,
+      "rx_errors": 0,
+      "tx_errors": 0,
+      "active_capture_overruns": 1,
+      "mic_clipped_total": 34,
+      "output_frames": 102720,
+      "limitation": "One capture buffer overflow was observed after the initial zero-overflow snapshot. Extended capture stability and acoustic output remain unverified; successful digital writes do not prove sound quality."
+    }
   }
 }
