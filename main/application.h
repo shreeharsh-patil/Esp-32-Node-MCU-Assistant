@@ -13,6 +13,7 @@
 #include <functional>
 #include <cstdint>
 #include <vector>
+#include <atomic>
 
 #include "protocol.h"
 #include "ota.h"
@@ -151,12 +152,15 @@ private:
     bool assets_version_checked_ = false;
     bool play_popup_on_listening_ = false;  // Flag to play popup sound after state changes to listening
     bool pending_listening_start_ = false;  // Waiting for playback to drain before starting listening (auto mode)
+    std::atomic<bool> custom_reply_audio_ready_{false};
     int clock_ticks_ = 0;
     TaskHandle_t activation_task_handle_ = nullptr;
 
 
     // Event handlers
     void HandleStateChangedEvent();
+    void PrepareIncomingReply();
+    void FinishIncomingReply();
     void HandleToggleChatEvent();
     void HandleStartListeningEvent();
     void HandleStopListeningEvent();

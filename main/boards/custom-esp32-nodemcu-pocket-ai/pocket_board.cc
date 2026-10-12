@@ -18,7 +18,9 @@
 #include "hands_free_policy.h"
 #include "pocket_audio_codec.h"
 #include "pocket_backend.h"
+#include "pocket_clock.h"
 #include "pocket_display.h"
+#include "pocket_panel.h"
 #include "pocket_wifi.h"
 #include "system_info.h"
 #include "wifi_board.h"
@@ -42,7 +44,7 @@ public:
         io_config.cs_gpio_num = DISPLAY_CS;
         io_config.dc_gpio_num = DISPLAY_DC;
         io_config.spi_mode = 0;
-        io_config.pclk_hz = 26 * 1000 * 1000;
+        io_config.pclk_hz = DISPLAY_SPI_HZ;
         io_config.trans_queue_depth = 4;
         io_config.lcd_cmd_bits = io_config.lcd_param_bits = 8;
         if (error == ESP_OK)
@@ -54,15 +56,7 @@ public:
         if (error == ESP_OK)
             error = esp_lcd_new_panel_st7789(io, &device, &panel);
         if (error == ESP_OK)
-            error = esp_lcd_panel_reset(panel);
-        if (error == ESP_OK)
-            error = esp_lcd_panel_init(panel);
-        if (error == ESP_OK)
-            error = esp_lcd_panel_invert_color(panel, DISPLAY_INVERT);
-        if (error == ESP_OK)
-            error = esp_lcd_panel_swap_xy(panel, DISPLAY_SWAP_XY);
-        if (error == ESP_OK)
-            error = esp_lcd_panel_mirror(panel, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y);
+            error = InitializePocketPanel(io, panel);
         if (error == ESP_OK)
             display_ = new PocketDisplay(io, panel, &audio_);
         else {
@@ -95,6 +89,7 @@ public:
     }
     std::string GetCustomBackendUrl() const override { return pocket::BackendUrl(); }
     std::string GetCustomBackendToken() const override { return pocket::BackendToken(); }
+    std::string GetTimeZone() const override { return pocket::ClockTimezone(); }
     Display* GetDisplay() override {
         return display_ ? static_cast<Display*>(display_) : &fallback_;
     }
@@ -144,11 +139,14 @@ private:
     uint32_t test_rx_before_ = 0;
     uint32_t test_tx_before_ = 0;
     uint32_t test_rx_errors_ = 0, test_tx_errors_ = 0, test_peak_ = 0;
+    uint32_t test_overruns_ = 0;
     int64_t test_finish_ = 0;
     std::array<char, 96> command_{};
     size_t command_length_ = 0;
 
     void StartTalk() {
+        if (display_)
+            display_->ShowClock(false);
         auto& app = Application::GetInstance();
         const auto state = app.GetDeviceState();
         if (state != kDeviceStateIdle && state != kDeviceStateSpeaking &&
@@ -226,7 +224,11 @@ private:
                  audio_.Rms(), audio_.Peak(), audio_.InputFrames(), audio_.OutputFrames(),
                  audio_.RxErrors(), audio_.TxErrors(), audio_.Overruns());
         ESP_LOGI(TAG,
-                 "DMA sample storage=12288B; PCM scratch=2048B; TFT strip=11200B; PSRAM disabled");
+                 "DMA sample storage=16384B; RX queue margin=56ms; PCM scratch=2048B; "
+                 "TFT strip=11200B; PSRAM disabled");
+        ESP_LOGI(TAG, "AUDIO mic_clipped_total=%lu tx_pcm16_rms=%lu tx_pcm16_peak=%lu (after gain)",
+                 audio_.MicClipped(), audio_.TxRms(), audio_.TxPeak());
+        audio_.PrintSignalExpectations();
         Application::GetInstance().GetAudioService().PrintDiagnostics();
         if (display_)
             display_->PrintUiDiagnostics();
@@ -275,6 +277,11 @@ private:
                      static_cast<unsigned>(esp_get_minimum_free_heap_size()),
                      audio_.output_volume());
             GetDisplay()->SetChatMessage("system", info);
+        } else if (strcmp(command, "clock") == 0 && display_) {
+            display_->ShowClock(true);
+        } else if (strncmp(command, "timezone ", 9) == 0) {
+            ESP_LOGI("PocketClock", "Timezone save %s; next voice session uses the new zone",
+                     pocket::SaveClockTimezone(command + 9) ? "OK" : "FAIL (unsupported zone)");
         } else if (strncmp(command, "face ", 5) == 0 && display_) {
             if (!display_->PreviewExpression(command + 5))
                 ESP_LOGW(TAG, "Face preview requires idle/setup and a known expression");
@@ -292,9 +299,16 @@ private:
 #endif
         else if (strcmp(command, "colors") == 0 && display_)
             display_->ColorTest(true);
-        else if (strcmp(command, "home") == 0 && display_)
+        else if (strcmp(command, "displaytest") == 0 && display_)
+            display_->StartDisplayTest();
+        else if (strcmp(command, "display black") == 0 && display_)
+            display_->HoldDisplayTest(pocket::PanelPattern::Black);
+        else if (strcmp(command, "display white") == 0 && display_)
+            display_->HoldDisplayTest(pocket::PanelPattern::White);
+        else if (strcmp(command, "home") == 0 && display_) {
             display_->ColorTest(false);
-        else if (strncmp(command, "volume ", 7) == 0) {
+            display_->ShowClock(false);
+        } else if (strncmp(command, "volume ", 7) == 0) {
             char* end = nullptr;
             const long volume = std::strtol(command + 7, &end, 10);
             if (end == command + 7 || *end != '\0' || volume < 0 || volume > 100) {
@@ -303,7 +317,16 @@ private:
             }
             audio_.SetOutputVolume(static_cast<int>(volume));
             GetDisplay()->ShowNotification("Volume set (output capped)");
-        } else if (strcmp(command, "testaudio") == 0 || strcmp(command, "mic") == 0) {
+        } else if (strcmp(command, "mic") == 0) {
+            if (app.GetDeviceState() != kDeviceStateWifiConfiguring || test_until_ || pressed_ ||
+                !app.GetAudioService().IsIdle()) {
+                ESP_LOGW(TAG, "mic requires idle setup; wait for replay to finish");
+                return;
+            }
+            ESP_LOGI(TAG,
+                     "MIC capture %s; PCM export needs host CRC; speech PENDING host listening",
+                     audio_.DiagnosticRecord() ? "PASS" : "FAIL");
+        } else if (strcmp(command, "testaudio") == 0) {
             if (app.GetDeviceState() != kDeviceStateWifiConfiguring || test_until_ || pressed_) {
                 ESP_LOGW(TAG, "testaudio requires Wi-Fi setup mode; enter setup first");
                 return;
@@ -312,16 +335,19 @@ private:
             test_tx_before_ = audio_.OutputFrames();
             test_rx_errors_ = audio_.RxErrors();
             test_tx_errors_ = audio_.TxErrors();
+            test_overruns_ = audio_.Overruns();
             StartTalk();
             test_until_ = esp_timer_get_time() + 1700000;
             ESP_LOGI(TAG, "TEST E/H recording real mic through upstream Opus loopback");
-        } else if (strcmp(command, "tone") == 0) {
+        } else if (strcmp(command, "tone") == 0 || strcmp(command, "tone long") == 0 ||
+                   strcmp(command, "tone loud") == 0) {
             if (app.GetDeviceState() != kDeviceStateWifiConfiguring ||
                 !app.GetAudioService().IsIdle() || pressed_) {
                 ESP_LOGW(TAG, "Tone requires idle Wi-Fi setup mode");
                 return;
             }
-            const bool ok = audio_.DiagnosticTone();
+            const bool ok = audio_.DiagnosticTone(strcmp(command, "tone long") == 0,
+                                                  strcmp(command, "tone loud") == 0);
             ESP_LOGI(TAG, "TEST F digital I2S tone transfer %s; audible/power check PENDING",
                      ok ? "PASS" : "FAIL");
         } else if (strcmp(command, "factory-reset CONFIRM") == 0) {
@@ -333,8 +359,9 @@ private:
         } else
             ESP_LOGI(TAG,
                      "Commands: handsfree on/off start stop cancel setup diag info colors home "
-                     "face NAME mic "
-                     "testaudio tone "
+                     "displaytest display black/white "
+                     "clock timezone IANA_NAME face NAME mic "
+                     "testaudio tone [long/loud] "
                      "volume N "
                      "wifi-reset CONFIRM factory-reset CONFIRM");
     }
@@ -346,7 +373,9 @@ private:
         ESP_LOGI(TAG, "Hardware tests A-N PENDING until run on the connected board");
         int stable = 1, previous = gpio_get_level(POCKET_PTT_GPIO);
         int64_t changed = esp_timer_get_time();
+#if CONFIG_POCKET_HARDWARE_DIAGNOSTICS
         int64_t next_heap = changed + 30000000;
+#endif
         while (true) {
             const int64_t now = esp_timer_get_time();
             const int raw = gpio_get_level(POCKET_PTT_GPIO);
@@ -397,8 +426,13 @@ private:
                 ESP_LOGI(TAG,
                          "TEST E digital capture %s frames=%lu measured_peak=%lu; acoustic mic "
                          "check PENDING",
-                         captured && audio_.RxErrors() == test_rx_errors_ ? "PASS" : "FAIL",
+                         captured && audio_.RxErrors() == test_rx_errors_ &&
+                                 audio_.Overruns() == test_overruns_
+                             ? "PASS"
+                             : "FAIL",
                          captured, test_peak_);
+                ESP_LOGI(TAG, "TEST E RX dropped DMA blocks=%lu",
+                         audio_.Overruns() - test_overruns_);
                 ESP_LOGI(
                     TAG,
                     "TEST H Opus loopback digital output %s frames=%lu; audible comparison PENDING",
@@ -409,10 +443,12 @@ private:
 #if !CONFIG_POCKET_HARDWARE_DIAGNOSTICS
             PollHandsFree(now / 1000);
 #endif
+#if CONFIG_POCKET_HARDWARE_DIAGNOSTICS
             if (now > next_heap) {
                 Diagnostics();
                 next_heap = now + 30000000;
             }
+#endif
             vTaskDelay(pdMS_TO_TICKS(20));
         }
     }

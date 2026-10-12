@@ -5,6 +5,7 @@
 
 namespace pocket {
 inline constexpr char kWifiSetupSsid[] = "Shreeharsh Assistant";
+inline constexpr char kWifiSetupPassword[] = "Shreeharsh1757";
 inline bool ValidWifiCredentials(const char* ssid, const char* password) {
     if (!ssid || !password)
         return false;

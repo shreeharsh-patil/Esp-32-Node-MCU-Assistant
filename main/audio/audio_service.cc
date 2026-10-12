@@ -530,6 +530,16 @@ void AudioService::OpusCodecTask() {
 }
 
 void AudioService::SetDecodeSampleRate(int sample_rate, int frame_duration) {
+    // Opus supports decoding a 24 kHz stream directly at 16 kHz. The custom
+    // backend's small half-duplex board can avoid a second PCM allocation and
+    // sample-rate conversion on every frame. Preserve other transports' rates.
+    if (Board::GetInstance().UsesCustomBackend()) {
+        const int output_rate = codec_->output_sample_rate();
+        if (output_rate == 8000 || output_rate == 12000 || output_rate == 16000 ||
+            output_rate == 24000 || output_rate == 48000) {
+            sample_rate = output_rate;
+        }
+    }
     if (decoder_sample_rate_ == sample_rate && decoder_duration_ms_ == frame_duration) {
         return;
     }
@@ -550,13 +560,13 @@ void AudioService::SetDecodeSampleRate(int sample_rate, int frame_duration) {
     decoder_frame_size_ = decoder_sample_rate_ / 1000 * frame_duration;
 
     auto codec = Board::GetInstance().GetAudioCodec();
+    if (output_resampler_ != nullptr) {
+        esp_ae_rate_cvt_close(output_resampler_);
+        output_resampler_ = nullptr;
+    }
     if (decoder_sample_rate_ != codec->output_sample_rate()) {
         ESP_LOGI(TAG, "Resampling audio from %d to %d", decoder_sample_rate_,
                  codec->output_sample_rate());
-        if (output_resampler_ != nullptr) {
-            esp_ae_rate_cvt_close(output_resampler_);
-            output_resampler_ = nullptr;
-        }
         esp_ae_rate_cvt_cfg_t output_resampler_cfg =
             RATE_CVT_CFG(decoder_sample_rate_, codec->output_sample_rate(), ESP_AUDIO_MONO);
         auto resampler_ret = esp_ae_rate_cvt_open(&output_resampler_cfg, &output_resampler_);
@@ -861,14 +871,22 @@ void AudioService::SetModelsList(srmodel_list_t* models_list) {
 }
 
 void AudioService::PrintDiagnostics() {
-    std::lock_guard<std::mutex> lock(audio_queue_mutex_);
+    // UART logging can block longer than a small board's RX DMA queue.
+    // Snapshot under the lock; never prevent capture/encoding while printing.
+    size_t encode, send, decode, playback, test;
+    {
+        std::lock_guard<std::mutex> lock(audio_queue_mutex_);
+        encode = audio_encode_queue_.size();
+        send = audio_send_queue_.size();
+        decode = audio_decode_queue_.size();
+        playback = audio_playback_queue_.size();
+        test = audio_testing_queue_.size();
+    }
     ESP_LOGI(TAG, "QUEUES encode=%u/%u send=%u/%u decode=%u/%u playback=%u/%u test=%u/%u",
-             static_cast<unsigned>(audio_encode_queue_.size()), MAX_ENCODE_TASKS_IN_QUEUE,
-             static_cast<unsigned>(audio_send_queue_.size()), MAX_SEND_PACKETS_IN_QUEUE,
-             static_cast<unsigned>(audio_decode_queue_.size()), MAX_DECODE_PACKETS_IN_QUEUE,
-             static_cast<unsigned>(audio_playback_queue_.size()), MAX_PLAYBACK_TASKS_IN_QUEUE,
-             static_cast<unsigned>(audio_testing_queue_.size()),
-             static_cast<unsigned>(kAudioTestingPacketCapacity));
+             static_cast<unsigned>(encode), MAX_ENCODE_TASKS_IN_QUEUE, static_cast<unsigned>(send),
+             MAX_SEND_PACKETS_IN_QUEUE, static_cast<unsigned>(decode), MAX_DECODE_PACKETS_IN_QUEUE,
+             static_cast<unsigned>(playback), MAX_PLAYBACK_TASKS_IN_QUEUE,
+             static_cast<unsigned>(test), static_cast<unsigned>(kAudioTestingPacketCapacity));
 #if INCLUDE_xTaskGetHandle
     for (const char* name : {"audio_input", "audio_output", "opus_codec", "pocket_control"}) {
         if (auto task = xTaskGetHandle(name))

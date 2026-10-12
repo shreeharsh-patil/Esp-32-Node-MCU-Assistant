@@ -76,3 +76,76 @@ Future battery architecture remains optional: protected 1-cell LiPo, suitable
 charger, regulated board/amplifier supply, power switch, and protected voltage
 measurement. A raw LiPo is not a substitute for this NodeMCU's USB/VIN input,
 and this firmware does not charge or measure a battery.
+
+## SmartElex SD/MODE ambiguity and silence measurements
+
+The owner's exact module is the [Robocraze SmartElex MAX98357A listing](https://robocraze.com/products/smartelex-max98357a-i2s-audio-breakout-amplifier-for-raspberry-pi-and-microcontrollers),
+SKU TIFCC0264. Its specifications say 5 V supply. That listing provides no
+SD/MODE schematic or open-pin bias specification.
+
+The [SmartElex guide](https://robu-prod-media.s3.ap-south-1.amazonaws.com/uploads/2025/01/SmartElex-I2S-Audio-Breakout-%E2%80%93-MAX98357A.pdf)
+lists SD low as enabled and shows SD connected to ground. This conflicts with
+the MAX98357A chip datasheet, where SD_MODE low shuts down the amplifier. The
+guide also gives gain connections that disagree with the chip's table. It does
+not include a schematic establishing an inverted board-level control. Therefore
+do not infer the actual module's bias or polarity from that example. Check
+whether its labeled SD pin connects directly to chip SD_MODE or through other
+circuitry. Leaving SD open requires a verified pull-up; it does not prove enable.
+
+With USB disconnected, check continuity and the breakout's pull-up components.
+With power applied, use a multimeter between **amplifier GND and VIN**, then
+**amplifier GND and SD/MODE**. Record both at idle and during `tone`. VIN should
+be near the intended 5 V and stay within 2.5–5.5 V at the chip. Never power the
+INMP441 from this rail; its VDD stays at 3V3. For a confirmed direct chip SD_MODE
+connection, 0 V means shutdown; a measured 3.3 V selects left and is comfortably
+above the maximum 1.5 V left-channel threshold. Only test that bias after checking
+the module circuit and ensuring VIN remains above the control voltage. Disconnect
+USB before changing wiring. Do not connect a possibly VIN-pulled-up SD pin to an
+ESP32 GPIO. Both transmitted slots contain the same mono signal.
+
+| Point at the amplifier header | Instrument / expected reading |
+|---|---|
+| VIN–GND | DMM: approximately 5 V; scope: look for dips during tone |
+| SD/MODE–GND | DMM: actual bias; compare against verified module circuit and chip thresholds |
+| BCLK–GND (GPIO26) | Scope/logic analyzer: 1.024 MHz, ~3.3 V logic, 64 clocks per stereo frame |
+| LRCLK–GND (GPIO25) | Scope/logic analyzer: 16 kHz, ~3.3 V logic, 50% duty cycle |
+| DIN–GND (GPIO22) | I2S decoder: MSB first, 32-bit stereo, one BCLK delay after WS, identical signed words in both slots during tone |
+| SPK+–SPK− | Differential probe, or two correctly grounded probes with scope subtraction: filtered 440 Hz component during tone |
+
+A DMM cannot establish I2S frequency, data framing, or PCM correctness. A
+frequency-capable DMM can help with clocks only if rated for 1.024 MHz. Probe
+at the amplifier as well as the ESP32 to locate a disconnected jumper. During
+the repaired `tone`, signed PCM16 peak should be approximately 120 counts after
+gain (stored in the top 16 bits of each 32-bit slot). It runs for 300 ms, with
+ramps; use a single-shot scope trigger or issue separate `tone` commands.
+
+Class-D outputs contain a high-frequency switching carrier; measure the
+differential **audio component**, not carrier RMS. Never ground SPK+ or SPK−,
+including with a scope ground clip. If power, enable and decoded DIN pass but
+there is no differential 440 Hz component, inspect the amplifier, output wiring,
+and speaker. With power off, disconnect one speaker lead and check its DC
+resistance (an 8-ohm speaker is usually somewhat below 8 ohms). An open speaker
+coil or wrong terminals cannot be fixed in firmware. Measure below the speaker's
+0.5 W rating; the digital cap is not an electrical power guarantee.
+
+Record five separate results: driver initialization, accepted digital TX data,
+physical I2S signals, measured amplifier enable/output, and audible playback.
+See [repair procedure and acceptance report](AUDIO_REPAIR.md).
+
+| Failed observation | Corrective check / action |
+|---|---|
+| VIN absent or collapses | Power off; inspect the VIN solder joint, USB power path and common ground. Repair the connection or supply before audio testing. |
+| Ground connection open | With power disconnected, check continuity between ESP32, amplifier and microphone grounds; repair loose joints. |
+| Direct chip SD_MODE near 0 V | Shutdown; verify the breakout circuit and provide its specified enable bias. Open SD is insufficient if there is no pull-up. |
+| Clocks present at ESP32 but absent at a module | Power off; repair the GPIO26/25 wire or module solder joint. |
+| Clocks absent at ESP32 | Capture driver startup errors and verify the installed board/firmware; expected signals printed by `diag` are not measurements. |
+| Nonzero TX diagnostics but DIN absent at amplifier | Power off; check GPIO22-to-DIN continuity, wrong terminal or a short. Do not reassign GPIOs. |
+| Supply, chip enable and decoded DIN valid, no differential audio | Check amplifier condition/thermal protection and output connections; this points beyond successful software transfer. |
+| Speaker coil open | Disconnect power and one speaker lead, verify resistance; repair its wire or replace a failed speaker. |
+| Mic WAV silent/noisy while RMS is nonzero | Check mic VDD at 3V3, common GND, L/R-to-GND, GPIO34 data continuity, clocks at the mic and the unblocked acoustic port. A floating data wire can give varying noise. |
+| Mic WAV repeatedly clips | Check electrical noise first; then lower the configured input gain and compare recordings. Do not treat saturated noise as speech. |
+
+Without measurement equipment, inspect solder joints and trace each wire with
+power disconnected, then obtain electrical checks from someone with a meter.
+Visual inspection and listening can narrow the problem but cannot verify VIN,
+ground continuity, SD/MODE voltage or I2S timing.

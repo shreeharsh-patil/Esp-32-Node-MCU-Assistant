@@ -21,19 +21,72 @@ int main() {
     for (int i = 0; i < 10000; ++i)
         sample = pocket::ConvertMic(0x10000000, dc, 1);
     assert(std::abs(sample) < 2);
+    // INMP441's unused low 8 slot bits must not affect PCM16 conversion.
+    float other_dc = 0;
+    dc = 0;
+    assert(pocket::ConvertMic(-0x12340000, dc, 4) ==
+           pocket::ConvertMic(-0x12340000 + 255, other_dc, 4));
+    // A real 440 Hz waveform must survive the capped output conversion,
+    // carry both signs, and keep its 16-bit word in the top of the I2S slot.
+    for (int volume : {20, 50}) {
+        float previous = 0, filtered = 0;
+        int positive = 0, negative = 0, crossings = 0;
+        int32_t last = 0;
+        for (int n = 0; n < 16000; ++n) {
+            const int16_t input =
+                static_cast<int16_t>(6000 * std::sin(n * 6.2831853 * 440 / 16000));
+            const int32_t output = pocket::ConvertSpeaker(input, previous, filtered, volume);
+            positive += output > 0;
+            negative += output < 0;
+            crossings += output > 0 && last <= 0;
+            assert(output % 65536 == 0);
+            assert(std::abs(static_cast<int64_t>(output)) <= static_cast<int64_t>(1300) * 65536);
+            last = output;
+        }
+        assert(positive > 7000 && negative > 7000);
+        assert(crossings >= 439 && crossings <= 441);
+    }
     float previous = 0, filtered = 0;
     assert(pocket::ConvertSpeaker(INT16_MAX, previous, filtered, 0) == 0);
+    // Explicit diagnostic gain remains bounded even if a caller supplies too much.
+    previous = filtered = 0;
+    const int64_t loud = pocket::ConvertSpeaker(INT16_MAX, previous, filtered, 100, 5.0f);
+    assert(loud > static_cast<int64_t>(26000) * 65536);
+    assert(loud <= static_cast<int64_t>(26214) * 65536);
+    assert(loud % 65536 == 0);
     for (int volume : {-100, 0, 20, 100, 1000}) {
         previous = filtered = 0;
         for (int i = 0; i < 10000; ++i) {
             const int16_t value = i % 2 ? INT16_MAX : INT16_MIN;
             const int64_t output = pocket::ConvertSpeaker(value, previous, filtered, volume);
-            assert(std::abs(output) <= static_cast<int64_t>(2622) * 65536);
+            assert(std::abs(output) <= static_cast<int64_t>(26214) * 65536);
             assert(output % 65536 == 0);
             if (volume <= 0)
                 assert(output == 0);
         }
     }
+    // A loud voice block uses one linear gain: no flattened waveform peaks.
+    std::array<float, 128> voice{};
+    previous = filtered = 0;
+    float peak = 0, gain = 2.0f;
+    for (size_t i = 0; i < voice.size(); ++i) {
+        const auto sample = static_cast<int16_t>(32000 * std::sin(i * 6.2831853 * 440 / 16000));
+        voice[i] = pocket::FilterSpeaker(sample, previous, filtered);
+        peak = std::max(peak, std::abs(voice[i]));
+    }
+    const float limited_gain = pocket::VoiceBlockGain(peak, gain, 100, 128, 0.8f, 2.0f);
+    assert(limited_gain > 0.6f && limited_gain < 0.7f);
+    for (const float value : voice) {
+        const int64_t packed = pocket::PackSpeaker(value * limited_gain, 0.65f);
+        const float pcm = static_cast<float>(packed / 65536);
+        assert(std::abs(pcm) <= 21299);
+        assert(std::abs(pcm - value * limited_gain * 32767) < 1.1f);
+    }
+    const float released = pocket::VoiceBlockGain(0.1f, gain, 100, 128, 0.8f, 2.0f);
+    assert(released > limited_gain && released < limited_gain + 0.05f);
+    gain = 2.0f;
+    assert(std::abs(pocket::VoiceBlockGain(0.1f, gain, 100, 128, 0.8f, 2.0f) - 1.6f) < 0.001f);
+    assert(pocket::VoiceBlockGain(1.0f, gain, 0, 128, 0.8f, 2.0f) == 0);
     xiaozhi::WebsocketAudioFrame frame;
     std::array<uint8_t, 18> v2 = {0,    2,    0,    0, 0, 0, 0, 0,    0x12,
                                   0x34, 0x56, 0x78, 0, 0, 0, 2, 0xab, 0xcd};

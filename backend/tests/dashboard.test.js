@@ -58,6 +58,37 @@ test('settings are encrypted at rest, survive a new instance and reject stale sa
   await assert.rejects(new DatabaseStore({ ...config, encryptionKey: 'f'.repeat(64) }, query).profile());
 });
 
+test('cold Neon setup batches concurrent callers and preserves saved settings across instances', async () => {
+  const { query, config } = databaseFixture();
+  let batches = 0;
+  const sql = {
+    query(text, params = []) {
+      return { text, params, then(resolve, reject) { return query(text, params).then(resolve, reject); } };
+    },
+    async transaction(statements) {
+      batches++;
+      const results = [];
+      for (const statement of statements) results.push(await statement);
+      return results;
+    },
+  };
+  const fresh = () => {
+    const store = new DatabaseStore({ ...config, databaseUrl: 'postgresql://test:unused@localhost/test' });
+    store.sql = sql;
+    return store;
+  };
+  const store = fresh();
+  const [profile] = await Promise.all([store.profile(), store.profile(), store.runtime()]);
+  assert.equal(batches, 1);
+  await store.saveProfile(profileBody(profile, { voice: 'Puck', historyEnabled: false }));
+  const restarted = await fresh().runtime();
+  assert.equal(restarted.voice, 'Puck');
+  assert.equal(restarted.historyEnabled, false);
+  assert.equal(batches, 2);
+  const [row] = await query('SELECT encrypted FROM assistant_config WHERE id = 1');
+  assert.equal(row.encrypted.includes('Puck'), false);
+});
+
 test('dashboard rejects credential edits and validates fields, encryption settings and device IDs', async () => {
   const { store } = databaseFixture(); const profile = await store.profile();
   for (const changes of [{ addKeys: 'secret invalid' }, { addKeys: Array.from({ length: 33 }, (_, i) => 'key' + i).join(',') },

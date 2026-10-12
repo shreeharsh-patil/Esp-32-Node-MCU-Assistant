@@ -49,15 +49,28 @@ export class DatabaseStore {
       throw publicError('Connect a Neon database and set SETTINGS_ENCRYPTION_KEY to enable the dashboard.', 503);
     }
     if (!this.initializing) this.initializing = (async () => {
-      for (const statement of schema) await this.query(statement);
       const profile = { name: 'Shreeharsh Assistant', model: this.config.model, voice: this.config.voice,
         instructions: this.config.instructions, historyEnabled: true,
         keyCooldownMs: this.config.keyCooldownMs };
-      await this.query('INSERT INTO assistant_config (id, revision, encrypted) VALUES (1, $1, $2) ON CONFLICT (id) DO NOTHING',
-        [randomUUID(), encrypt(profile, this.config.encryptionKey)]);
+      const statements = schema.map(statement => [statement, []]);
+      statements.push(['INSERT INTO assistant_config (id, revision, encrypted) VALUES (1, $1, $2) ON CONFLICT (id) DO NOTHING',
+        [randomUUID(), encrypt(profile, this.config.encryptionKey)]]);
+      statements.push(['SELECT revision, encrypted FROM assistant_config WHERE id = 1', []]);
+      let results;
+      if (this.queryOverride) {
+        // The local SQL emulator has no Neon HTTP transaction interface.
+        results = [];
+        for (const [statement, params] of statements) results.push(await this.query(statement, params));
+      } else {
+        if (!this.sql) this.sql = neon(this.config.databaseUrl);
+        // One HTTP round trip, rather than eight serial network requests on
+        // every cold function instance. Leave existing encrypted settings intact.
+        results = await this.sql.transaction(statements.map(([statement, params]) => this.sql.query(statement, params)),
+          { fetchOptions: { signal: AbortSignal.timeout(8000) } });
+      }
       // Migrate older dashboard profiles: provider credentials now belong only
       // to the private server environment. Preserve all other saved settings.
-      const [row] = await this.query('SELECT revision, encrypted FROM assistant_config WHERE id = 1');
+      const [row] = results.at(-1);
       const stored = decrypt(row.encrypted, this.config.encryptionKey);
       if (Object.hasOwn(stored, 'apiKeys')) {
         delete stored.apiKeys;
@@ -156,6 +169,14 @@ export class DatabaseStore {
       await this.query('INSERT INTO assistant_messages (id, session_id, device_id, role, encrypted, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
         [randomUUID(), sessionId, deviceId, role, encrypt(text.slice(0, 6000), this.config.encryptionKey), now()]);
     }
+  }
+  async recentTurns(deviceId, limit = 8) {
+    if (!validDeviceId(deviceId)) return [];
+    await this.init();
+    const rows = await this.query(
+      'SELECT role, encrypted FROM assistant_messages WHERE device_id = $1 ORDER BY created_at DESC, role ASC LIMIT $2',
+      [deviceId, Math.min(12, Math.max(1, limit))]);
+    return rows.reverse().map(row => ({ role: row.role, text: String(decrypt(row.encrypted, this.config.encryptionKey)) }));
   }
   async conversations(deviceId = '') {
     if (deviceId && !validDeviceId(deviceId)) throw publicError('Invalid device ID');

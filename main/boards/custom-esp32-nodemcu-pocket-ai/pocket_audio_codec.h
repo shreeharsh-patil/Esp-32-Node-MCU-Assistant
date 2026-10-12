@@ -22,10 +22,16 @@ public:
     uint32_t Overruns() const { return overruns_.load(); }
     uint32_t InputFrames() const { return input_frames_.load(); }
     uint32_t OutputFrames() const { return output_frames_.load(); }
+    uint32_t MicClipped() const { return mic_clipped_.load(); }
+    uint32_t TxRms() const { return tx_rms_.load(); }
+    uint32_t TxPeak() const { return tx_peak_.load(); }
     // PCM accepted by I2S, before safety gain. Not an acoustic measurement.
     uint32_t PlaybackRms() const;
     // Called by the board control task only while upstream playback is idle.
-    bool DiagnosticTone();
+    bool DiagnosticTone(bool extended = false, bool loud = false);
+    // Idle service only; bounded PCM stream with temporary high-speed UART and host ACK.
+    bool DiagnosticRecord();
+    void PrintSignalExpectations() const;
 
 protected:
     int Read(int16_t* dest, int samples) override;
@@ -34,15 +40,25 @@ protected:
 private:
     Application* application_;
     static constexpr int kChunk = 128;
+    static constexpr int kDmaDescriptors = 8;
     bool ready_ = false;
     bool started_ = false;
-    std::atomic<int> safe_volume_{20};
+    std::atomic<int> safe_volume_{80};
     std::atomic<float> mic_gain_{4.0f};
     std::atomic<bool> capture_{false}, playback_{false};
     std::atomic<uint32_t> rms_{0}, peak_{0}, rx_errors_{0}, tx_errors_{0}, overruns_{0};
     std::atomic<uint32_t> input_frames_{0}, output_frames_{0};
+    std::atomic<uint32_t> mic_clipped_{0}, tx_rms_{0}, tx_peak_{0};
+    std::atomic<bool> diagnostic_capture_{false};
+    std::atomic<bool> diagnostic_playback_{false};
+    std::atomic<bool> fresh_capture_{false};
     std::atomic<uint32_t> playback_rms_{0}, playback_at_ms_{0};
     std::array<int32_t, kChunk * 2> rx_words_{}, tx_words_{};
+    std::array<float, kChunk> voice_samples_{};
     float mic_dc_ = 0, speaker_previous_ = 0, speaker_filtered_ = 0;
+    float speaker_gain_ = 2.0f;
     std::mutex output_mutex_;
+    std::mutex input_mutex_;
+    int WriteSamples(const int16_t* data, int samples, float output_gain, float voice_boost = 1.0f);
+    int ReadCaptured(int16_t* dest, int samples);
 };

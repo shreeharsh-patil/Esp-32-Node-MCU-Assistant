@@ -563,7 +563,7 @@ void Application::InitializeProtocol() {
     });
 
     protocol_->OnIncomingAudio([this](std::unique_ptr<AudioStreamPacket> packet) {
-        if (GetDeviceState() == kDeviceStateSpeaking) {
+        if (GetDeviceState() == kDeviceStateSpeaking || custom_reply_audio_ready_.load()) {
             audio_service_.PushPacketToDecodeQueue(std::move(packet));
         }
     });
@@ -579,6 +579,7 @@ void Application::InitializeProtocol() {
     });
 
     protocol_->OnAudioChannelClosed([this, &board]() {
+        custom_reply_audio_ready_.store(false);
         board.SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
         Schedule([this]() {
             auto display = Board::GetInstance().GetDisplay();
@@ -633,20 +634,9 @@ void Application::InitializeProtocol() {
                 return;
             }
             if (strcmp(state->valuestring, "start") == 0) {
-                Schedule([this]() {
-                    aborted_ = false;
-                    SetDeviceState(kDeviceStateSpeaking);
-                });
+                PrepareIncomingReply();
             } else if (strcmp(state->valuestring, "stop") == 0) {
-                Schedule([this]() {
-                    if (GetDeviceState() == kDeviceStateSpeaking) {
-                        if (listening_mode_ == kListeningModeManualStop) {
-                            SetDeviceState(kDeviceStateIdle);
-                        } else {
-                            SetDeviceState(kDeviceStateListening);
-                        }
-                    }
-                });
+                FinishIncomingReply();
             } else if (strcmp(state->valuestring, "sentence_start") == 0) {
                 auto text = cJSON_GetObjectItem(root, "text");
                 if (cJSON_IsString(text)) {
@@ -1005,6 +995,36 @@ void Application::ContinueWakeWordInvoke(const std::string& wake_word) {
 #endif
 }
 
+void Application::PrepareIncomingReply() {
+    const bool custom = Board::GetInstance().UsesCustomBackend();
+    if (custom) {
+        // TTS start and its first packets may arrive in the same network burst,
+        // before the main task processes the state change. Prepare the decoder
+        // first so those packets are accepted and never cleared by Speaking.
+        audio_service_.ResetDecoder();
+        custom_reply_audio_ready_.store(true);
+    }
+    Schedule([this, custom]() {
+        aborted_ = false;
+        SetDeviceState(kDeviceStateSpeaking);
+        // A short reply can enqueue both start and stop before STATE_CHANGED
+        // is handled. Pause capture now, so the later Listening state resumes
+        // it only after speaker playback drains.
+        if (custom)
+            HandleStateChangedEvent();
+    });
+}
+
+void Application::FinishIncomingReply() {
+    Schedule([this]() {
+        custom_reply_audio_ready_.store(false);
+        if (GetDeviceState() == kDeviceStateSpeaking) {
+            SetDeviceState(listening_mode_ == kListeningModeManualStop ? kDeviceStateIdle
+                                                                       : kDeviceStateListening);
+        }
+    });
+}
+
 void Application::HandleStateChangedEvent() {
     DeviceState new_state = state_machine_.GetState();
     clock_ticks_ = 0;
@@ -1064,7 +1084,8 @@ void Application::HandleStateChangedEvent() {
                 // Only AFE wake word can be detected in speaking mode
                 audio_service_.EnableWakeWordDetection(audio_service_.IsAfeWakeWord());
             }
-            audio_service_.ResetDecoder();
+            if (!custom_reply_audio_ready_.load())
+                audio_service_.ResetDecoder();
             break;
         case kDeviceStateNotifying:
             display->SetStatus(Lang::Strings::SPEAKING);
@@ -1188,6 +1209,7 @@ void Application::Schedule(std::function<void()>&& callback) {
 void Application::AbortSpeaking(AbortReason reason) {
     ESP_LOGI(TAG, "Abort speaking");
     aborted_ = true;
+    custom_reply_audio_ready_.store(false);
     if (protocol_) {
         protocol_->SendAbortSpeaking(reason);
     }

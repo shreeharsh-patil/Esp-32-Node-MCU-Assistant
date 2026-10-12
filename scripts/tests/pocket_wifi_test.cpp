@@ -4,6 +4,8 @@
 int main() {
     using pocket::ValidWifiCredentials;
     assert(std::string(pocket::kWifiSetupSsid) == "Shreeharsh Assistant");
+    assert(std::string(pocket::kWifiSetupPassword) == "Shreeharsh1757");
+    assert(pocket::ValidWifiCredentials(pocket::kWifiSetupSsid, pocket::kWifiSetupPassword));
     assert(ValidWifiCredentials("home", ""));
     assert(ValidWifiCredentials("2.4GHz network", "12345678"));
     assert(!ValidWifiCredentials("", "12345678"));

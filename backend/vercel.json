@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "express",
+  "regions": ["bom1"],
   "fluid": true,
   "functions": {
     "src/server.js": {

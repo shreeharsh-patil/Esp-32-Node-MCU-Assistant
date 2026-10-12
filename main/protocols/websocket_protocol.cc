@@ -218,6 +218,11 @@ std::string WebsocketProtocol::GetHelloMessage() {
     cJSON_AddItemToObject(root, "features", features);
     AddTextFontCapabilities(root);
     cJSON_AddStringToObject(root, "transport", "websocket");
+    if (Board::GetInstance().UsesCustomBackend()) {
+        const auto zone = Board::GetInstance().GetTimeZone();
+        if (!zone.empty())
+            cJSON_AddStringToObject(root, "timezone", zone.c_str());
+    }
     cJSON* audio_params = cJSON_CreateObject();
     cJSON_AddStringToObject(audio_params, "format", "opus");
     cJSON_AddNumberToObject(audio_params, "sample_rate", 16000);

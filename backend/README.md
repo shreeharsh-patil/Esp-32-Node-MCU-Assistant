@@ -74,6 +74,7 @@ an adapter, rather than just a different environment variable.
 | `DATABASE_URL` | Private Neon PostgreSQL connection string; required for the dashboard and persistent settings/history. |
 | `GEMINI_API_KEY` | Private Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey). Use the plural variable for multiple keys. The account needs access/quota for the selected Live model. |
 | `GEMINI_API_KEYS` | Optional comma-separated key pool. Takes precedence over the singular variable; use this instead when rotating multiple keys. |
+| `FIRECRAWL_API_KEYS` | Optional private comma-separated Firecrawl key pool for current web questions. Add it to Production and redeploy. Takes precedence over `FIRECRAWL_API_KEY`. |
 | `GEMINI_KEY_COOLDOWN_SECONDS` | Optional cooldown after a key reports a rate limit; default `60`, allowed `15..3600`. |
 | `DEVICE_TOKEN` | The random 64-character token you generated. It authenticates the ESP32 and is separate from the Gemini key. |
 | `PUBLIC_BASE_URL` | Your exact production HTTPS origin, without `/ws`, `/ota/`, query strings or credentials. |
@@ -81,6 +82,21 @@ an adapter, rather than just a different environment variable.
 | `GEMINI_VOICE` | Optional; default `Kore`. |
 | `ASSISTANT_INSTRUCTIONS` | Optional; change the assistant's name, language, personality and reply length. Defaults to friendly, short replies in the user's language. |
 | `SESSION_SECONDS` | Optional; default `270`, allowed `30..270`. |
+
+During speech playback the server sends a few Opus frames ahead to absorb
+short Wi-Fi delays. Timed session renewal waits for an active reply to finish,
+with a bounded grace period, before reconnecting the device.
+When dashboard history is enabled, each new Live session loads a small, per-device
+window of recent encrypted conversation turns from Neon. Clearing history removes
+that memory. Current-information questions use Firecrawl's web search when keys
+are configured; searches have a ten-second budget and return at most three source
+snippets to the voice model. Time questions use a direct clock tool with India
+Standard Time and UTC, without waiting for a web search. The keys are never sent
+to the ESP32.
+
+The 280×240 ESP32 screen cannot run YouTube's video player, and this backend
+does not extract a video's audio for speaker-only playback. The assistant will
+explain that limitation rather than claiming to have opened or played a video.
 
 ### Multiple Gemini keys
 
@@ -105,7 +121,8 @@ session retains its key so audio/context continue without interruption. On a
 and is skipped. During setup the backend immediately tries the next available
 key. A rate limit during an active session closes it; the ESP32 automatically
 reconnects using another available key. An interrupted question may need to be
-repeated and the new session resets context. When every key is cooling down,
+repeated; if history is enabled, the new session reloads recent saved turns.
+When every key is cooling down,
 the backend stops making provider requests until one becomes eligible; firmware
 retry backoff remains active. Cooldown is adjustable with the variable above.
 Keys are never returned to the device or printed in logs;

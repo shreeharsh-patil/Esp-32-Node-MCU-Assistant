@@ -78,6 +78,7 @@ public:
     virtual bool UsesCustomBackend() const { return false; }
     virtual std::string GetCustomBackendUrl() const { return ""; }
     virtual std::string GetCustomBackendToken() const { return ""; }
+    virtual std::string GetTimeZone() const { return ""; }
     virtual void SetNetworkEventCallback(NetworkEventCallback callback) { (void)callback; }
     virtual const char* GetNetworkStateIcon() = 0;
     virtual bool GetBatteryLevel(int& level, bool& charging, bool& discharging);
